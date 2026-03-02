@@ -67,7 +67,7 @@ const ONBOARDING_EXEMPT_PATHS = [
   '/admin/login',
   '/admin/signup',
   '/api/',
-  '/accept-invitation/',
+  '/complete-signup/',
   '/oauth/',
   '/.well-known/',
   '/widget',
@@ -203,7 +203,7 @@ class SafeRootDocument extends Component<{ children: ReactNode }, { hasError: bo
 }
 
 // Non-portal routes that should never have a forced theme
-const NON_PORTAL_PREFIXES = ['/admin', '/auth', '/onboarding', '/api', '/accept-invitation']
+const NON_PORTAL_PREFIXES = ['/admin', '/auth', '/onboarding', '/api', '/complete-signup']
 
 function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
   const { settings } = Route.useRouteContext()

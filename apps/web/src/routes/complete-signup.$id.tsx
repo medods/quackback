@@ -48,7 +48,7 @@ const DEFAULT_BRANDING: InviteBranding = {
   inviterName: null,
 }
 
-export const Route = createFileRoute('/accept-invitation/$id')({
+export const Route = createFileRoute('/complete-signup/$id')({
   validateSearch: (search: Record<string, unknown>) => ({
     error: (search.error as string) || undefined,
   }),
@@ -57,24 +57,24 @@ export const Route = createFileRoute('/accept-invitation/$id')({
     const { session } = context
 
     console.log(
-      `[route:accept-invitation] loader: id=${id}, hasSession=${!!session?.user}, sessionEmail=${session?.user?.email ?? 'none'}`
+      `[route:complete-signup] loader: id=${id}, hasSession=${!!session?.user}, sessionEmail=${session?.user?.email ?? 'none'}`
     )
 
     const branding = await getInviteBrandingFn({ data: id }).catch(() => DEFAULT_BRANDING)
 
     if (!session?.user) {
-      console.log(`[route:accept-invitation] loader: no session, showing sign-in`)
+      console.log(`[route:complete-signup] loader: no session, showing sign-in`)
       return { state: 'not-authenticated' as const, branding }
     }
 
     try {
       const data = await getInvitationDetailsFn({ data: id })
-      console.log(`[route:accept-invitation] loader: state=welcome`)
+      console.log(`[route:complete-signup] loader: state=welcome`)
       return { state: 'welcome' as const, ...data, branding }
     } catch (err) {
       if (isRedirect(err)) throw err
       const message = err instanceof Error ? err.message : 'Failed to load invitation'
-      console.error(`[route:accept-invitation] loader: state=error, message=${message}`)
+      console.error(`[route:complete-signup] loader: state=error, message=${message}`)
       return { state: 'error' as const, error: message, branding }
     }
   },
@@ -88,7 +88,7 @@ function AcceptInvitationPage() {
   const { branding } = data
 
   if (errorCode) {
-    console.log(`[route:accept-invitation] component: errorCode=${errorCode}`)
+    console.log(`[route:complete-signup] component: errorCode=${errorCode}`)
     const message =
       ERROR_MESSAGES[errorCode] ??
       'Something went wrong with the invitation link. Please ask your administrator to resend the invitation.'
@@ -211,7 +211,7 @@ function NotAuthenticatedContent({
           : 'Sign in to accept your invitation and get started with your team.'}
       </p>
       <div className="mt-6 flex flex-col gap-3">
-        <a href={`/admin/login?callbackUrl=/accept-invitation/${invitationId}`}>
+        <a href={`/admin/login?callbackUrl=/complete-signup/${invitationId}`}>
           <Button className="w-full h-11">Sign in</Button>
         </a>
         <a
@@ -280,7 +280,7 @@ function WelcomeContent({
 
       if (!requiresPasswordSetup && !skipPassword && password.length >= 8) {
         await setPasswordFn({ data: { newPassword: password } }).catch((err) => {
-          console.warn('[accept-invitation] optional setPassword failed:', err)
+          console.warn('[complete-signup] optional setPassword failed:', err)
         })
       }
 
@@ -438,7 +438,7 @@ function ErrorContent({
                 <Button className="w-full h-11">Go to Dashboard</Button>
               </a>
             ) : kind === 'token' ? (
-              <a href={`/admin/login?callbackUrl=/accept-invitation/${invitationId}`}>
+              <a href={`/admin/login?callbackUrl=/complete-signup/${invitationId}`}>
                 <Button className="w-full h-11">Sign in</Button>
               </a>
             ) : (

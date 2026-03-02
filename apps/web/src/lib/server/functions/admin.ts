@@ -679,7 +679,7 @@ export type InvitationByIdInput = z.infer<typeof invitationByIdSchema>
  * Uses Better Auth's API to generate the token and stores it for later URL construction.
  *
  * @param email - The invitee's email address
- * @param callbackPath - Relative path to redirect to after authentication (e.g., /accept-invitation/{id})
+ * @param callbackPath - Relative path to redirect to after authentication (e.g., /complete-signup/{id})
  * @param portalUrl - The base portal URL (workspace domain)
  * @returns The magic link URL with the correct workspace domain
  */
@@ -725,7 +725,7 @@ async function generateInvitationMagicLink(
 
   // Construct the magic link URL with the workspace domain
   const absoluteCallbackURL = `${portalUrl}${callbackPath}`
-  const verifyUrl = new URL('/api/auth/magic-link/verify', portalUrl)
+  const verifyUrl = new URL('/verify-magic-link', portalUrl)
   verifyUrl.searchParams.set('token', token)
   verifyUrl.searchParams.set('callbackURL', absoluteCallbackURL)
   verifyUrl.searchParams.set('errorCallbackURL', absoluteCallbackURL)
@@ -788,7 +788,7 @@ export const sendInvitationFn = createServerFn({ method: 'POST' })
 
       // Generate magic link for one-click authentication
       const portalUrl = getBaseUrl()
-      const callbackURL = `/accept-invitation/${invitationId}`
+      const callbackURL = `/complete-signup/${invitationId}`
       const inviteLink = await generateInvitationMagicLink(email, callbackURL, portalUrl)
 
       const result = await sendInvitationEmail({
@@ -865,7 +865,7 @@ export const resendInvitationFn = createServerFn({ method: 'POST' })
 
       // Generate new magic link for one-click authentication
       const portalUrl = getBaseUrl()
-      const callbackURL = `/accept-invitation/${invitationId}`
+      const callbackURL = `/complete-signup/${invitationId}`
       const inviteLink = await generateInvitationMagicLink(
         invitationRecord.email,
         callbackURL,

@@ -8,7 +8,7 @@ import { getPublicUrlOrNull } from '@/lib/server/storage/s3'
 import { getSession } from './auth'
 
 /**
- * Get invitation details for the accept-invitation page.
+ * Get invitation details for the complete-signup page.
  * Returns invite info + whether password auth is enabled.
  *
  * Note: Uses createServerFn directly instead of withAuth because this needs to be
