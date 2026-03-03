@@ -10,7 +10,7 @@ import { stripCodeFences } from '@/lib/server/domains/ai/parse'
 import type { PostId } from '@quackback/ids'
 import type { MergeCandidate } from './merge-search.service'
 
-const ASSESSMENT_MODEL = 'google/gemini-2.5-flash'
+const ASSESSMENT_MODEL = 'google/gemini-3.1-flash-preview'
 
 const SYSTEM_PROMPT = `You are a duplicate-detection assistant for a customer feedback platform used by product managers.
 You will be given a reference post and one or more posts to compare. For each comparison post, determine whether it is truly a DUPLICATE of the reference — meaning they request the exact same thing, just worded differently.

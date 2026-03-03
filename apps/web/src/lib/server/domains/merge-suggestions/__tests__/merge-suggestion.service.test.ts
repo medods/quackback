@@ -126,7 +126,7 @@ describe('merge-suggestion.service', () => {
         hybridScore: 0.93,
         llmConfidence: 0.9,
         llmReasoning: 'Both request dark mode',
-        llmModel: 'google/gemini-2.5-flash',
+        llmModel: 'google/gemini-3.1-flash-preview',
       })
 
       expect(insertValuesCalls).toHaveLength(1)

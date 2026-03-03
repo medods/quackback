@@ -95,7 +95,7 @@ export async function checkPostForMergeCandidates(postId: PostId): Promise<void>
       hybridScore: bestCandidate.hybridScore,
       llmConfidence: bestAssessment.confidence,
       llmReasoning: bestAssessment.reasoning,
-      llmModel: 'google/gemini-2.5-flash',
+      llmModel: 'google/gemini-3.1-flash-preview',
     })
   }
 

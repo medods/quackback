@@ -19,7 +19,7 @@ import { buildSuggestionPrompt } from './prompts/suggestion.prompt'
 import type { SuggestionGenerationResult } from '../types'
 import type { FeedbackSignalId, RawFeedbackItemId, BoardId } from '@quackback/ids'
 
-const SUGGESTION_MODEL = 'google/gemini-2.5-flash'
+const SUGGESTION_MODEL = 'google/gemini-3.1-flash-preview'
 
 /** Similarity threshold — external signals below this get a create_post suggestion. */
 const CREATE_POST_SIMILARITY_THRESHOLD = 0.8

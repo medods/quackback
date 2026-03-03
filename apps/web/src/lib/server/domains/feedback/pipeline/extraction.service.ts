@@ -16,7 +16,7 @@ import { enqueueFeedbackAiJob } from '../queues/feedback-ai-queue'
 import type { ExtractionResult, RawFeedbackContent, RawFeedbackItemContextEnvelope } from '../types'
 import type { RawFeedbackItemId } from '@quackback/ids'
 
-const EXTRACTION_MODEL = 'google/gemini-2.5-flash'
+const EXTRACTION_MODEL = 'google/gemini-3.1-flash-preview'
 const EXTRACTION_PROMPT_VERSION = 'v1'
 
 /**
