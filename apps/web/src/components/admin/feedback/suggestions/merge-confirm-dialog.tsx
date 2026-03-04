@@ -31,14 +31,14 @@ export function MergeConfirmDialog({
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Consolidate into this post?</AlertDialogTitle>
+          <AlertDialogTitle>Merge into this post?</AlertDialogTitle>
           <AlertDialogDescription asChild>
             <div className="space-y-3">
               <p>
                 Votes and comments will be combined. Voters are only counted once.
               </p>
 
-              {/* Consolidated result card */}
+              {/* Merged result card */}
               <div className="flex items-start gap-2.5 rounded-md border border-border/60 bg-muted/30 px-3 py-2.5">
                 <div className="flex flex-col items-center shrink-0 rounded border border-border/50 bg-muted/40 px-1.5 py-1 gap-0">
                   <ChevronUpIcon className="h-3 w-3 text-muted-foreground" />
@@ -59,6 +59,11 @@ export function MergeConfirmDialog({
                   <p className="text-sm font-medium text-foreground line-clamp-2">
                     {preview.title}
                   </p>
+                  {preview.content && (
+                    <p className="text-xs text-muted-foreground/60 line-clamp-2 mt-0.5">
+                      {preview.content}
+                    </p>
+                  )}
                   <div className="flex items-center gap-1 text-[11px] text-muted-foreground mt-1">
                     <ChatBubbleLeftIcon className="h-3 w-3" />
                     <span>{preview.commentCount} comments</span>
@@ -75,7 +80,7 @@ export function MergeConfirmDialog({
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
           <AlertDialogAction onClick={onConfirm} disabled={isPending}>
-            {isPending ? 'Consolidating...' : 'Consolidate'}
+            {isPending ? 'Merging...' : 'Merge'}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
