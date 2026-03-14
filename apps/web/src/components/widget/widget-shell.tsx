@@ -61,7 +61,7 @@ export function WidgetShell({ orgSlug, onBack, children }: WidgetShellProps) {
         <a
           href={`https://quackback.io?utm_campaign=${encodeURIComponent(orgSlug || 'unknown')}&utm_content=widget&utm_medium=referral&utm_source=powered-by`}
           target="_blank"
-          rel="noopener noreferrer"
+          rel="noopener"
           className="inline-flex items-center gap-1 text-[10px] text-muted-foreground/60 hover:text-muted-foreground transition-colors"
         >
           <img
