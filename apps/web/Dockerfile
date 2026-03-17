@@ -30,7 +30,7 @@ COPY packages ./packages
 COPY scripts ./scripts
 
 # Install all dependencies (including devDependencies for build)
-RUN bun install --frozen-lockfile
+RUN bun install --frozen-lockfile --concurrent-scripts 2
 
 # Set build-time environment
 ENV NODE_ENV=production
