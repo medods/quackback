@@ -160,6 +160,36 @@ describe('resolveAndMergeAnonymousToken', () => {
     })
   })
 
+  it('supports signed previousToken values (raw.signature)', async () => {
+    const anonPrincipalId = 'principal_anon' as PrincipalId
+    const anonUserId = 'user_anon' as UserId
+
+    mockSessionFindFirst.mockResolvedValueOnce(null).mockResolvedValueOnce({
+      userId: anonUserId,
+      user: { id: anonUserId, name: 'Anon User' },
+    })
+    mockPrincipalFindFirst.mockResolvedValue({
+      id: anonPrincipalId,
+      type: 'anonymous',
+      displayName: 'Curious Penguin',
+    })
+
+    await resolveAndMergeAnonymousToken({
+      previousToken: 'raw-token.signature',
+      targetPrincipalId: TARGET_PRINCIPAL_ID,
+      targetDisplayName: 'Jane Doe',
+    })
+
+    expect(mockSessionFindFirst).toHaveBeenCalledTimes(2)
+    expect(mockMerge).toHaveBeenCalledWith({
+      anonPrincipalId,
+      targetPrincipalId: TARGET_PRINCIPAL_ID,
+      anonUserId,
+      anonDisplayName: 'Curious Penguin',
+      targetDisplayName: 'Jane Doe',
+    })
+  })
+
   it('does not throw when merge fails (graceful degradation)', async () => {
     mockSessionFindFirst.mockResolvedValue({
       userId: 'user_anon',

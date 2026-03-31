@@ -23,6 +23,8 @@ export const user = pgTable(
     name: text('name').notNull(),
     /** Nullable — external users (Slack, etc.) may not have a real email */
     email: text('email'),
+    /** Stable external identity key (SSO/widget). Email can change over time. */
+    externalId: text('external_id'),
     emailVerified: boolean('email_verified').default(false).notNull(),
     image: text('image'),
     // Profile image - S3 storage key (e.g., "avatars/2026/02/abc123-avatar.png")
@@ -42,6 +44,10 @@ export const user = pgTable(
     uniqueIndex('user_email_idx')
       .on(table.email)
       .where(sql`email IS NOT NULL`),
+    // External identity is unique when present
+    uniqueIndex('user_external_id_idx')
+      .on(table.externalId)
+      .where(sql`external_id IS NOT NULL`),
   ]
 )
 
