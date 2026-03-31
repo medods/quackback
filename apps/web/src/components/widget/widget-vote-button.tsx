@@ -1,6 +1,5 @@
 import { useRef, useCallback } from 'react'
 import { ChevronUpIcon } from '@heroicons/react/24/solid'
-import { useIntl } from 'react-intl'
 import { useWidgetVote } from '@/lib/client/hooks/use-widget-vote'
 import { useWidgetAuth } from './widget-auth-provider'
 import { cn } from '@/lib/shared/utils'
@@ -24,12 +23,12 @@ export function WidgetVoteButton({
   onAuthRequired,
   compact = false,
 }: WidgetVoteButtonProps) {
-  const intl = useIntl()
-  const { sessionVersion } = useWidgetAuth()
+  const { sessionVersion, isIdentified } = useWidgetAuth()
   const { voteCount, hasVoted, isPending, handleVote } = useWidgetVote({
     postId,
     voteCount: initialVoteCount,
     sessionVersion,
+    trackVotedState: isIdentified,
   })
 
   const isHandlingRef = useRef(false)
@@ -52,26 +51,10 @@ export function WidgetVoteButton({
     handleVote()
   }, [onAuthRequired, onBeforeVote, isPending, handleVote])
 
-  const ariaLabel = hasVoted
-    ? intl.formatMessage(
-        {
-          id: 'widget.voteButton.ariaRemoveVote',
-          defaultMessage: 'Remove vote ({count, plural, one {# vote} other {# votes}})',
-        },
-        { count: voteCount }
-      )
-    : intl.formatMessage(
-        {
-          id: 'widget.voteButton.ariaVote',
-          defaultMessage: 'Vote ({count, plural, one {# vote} other {# votes}})',
-        },
-        { count: voteCount }
-      )
-
   return (
     <button
       type="button"
-      aria-label={ariaLabel}
+      aria-label={hasVoted ? `Remove vote (${voteCount} votes)` : `Vote (${voteCount} votes)`}
       aria-pressed={hasVoted}
       onClick={handleClick}
       disabled={isPending}
