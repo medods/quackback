@@ -1,34 +1,71 @@
 import { useEffect, useState } from 'react'
+import type { Locale } from 'date-fns'
 import { formatDistanceToNow } from 'date-fns'
+import { enUS, ru } from 'date-fns/locale'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface TimeAgoProps {
   date: Date | string
   className?: string
+  locale?: string
 }
 
-function getTimeAgo(date: Date | string | null | undefined): string {
+function resolveDateFnsLocale(locale?: string): Locale {
+  const normalized = locale?.trim().toLowerCase()
+  if (!normalized) return enUS
+  if (normalized === 'ru' || normalized.startsWith('ru-')) return ru
+  return enUS
+}
+
+function getTimeAgo(date: Date | string | null | undefined, locale?: string): string {
   if (!date) return ''
   const d = typeof date === 'string' ? new Date(date) : date
   // Check for invalid date
   if (isNaN(d.getTime())) return ''
-  return formatDistanceToNow(d, { addSuffix: true })
+  return formatDistanceToNow(d, {
+    addSuffix: true,
+    locale: resolveDateFnsLocale(locale),
+  })
 }
 
-export function TimeAgo({ date, className }: TimeAgoProps) {
+function getAbsoluteDate(date: Date | string | null | undefined): string {
+  if (!date) return ''
+  const d = typeof date === 'string' ? new Date(date) : date
+  if (isNaN(d.getTime())) return ''
+
+  const day = String(d.getDate()).padStart(2, '0')
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const year = String(d.getFullYear())
+  return `${day}.${month}.${year}`
+}
+
+export function TimeAgo({ date, className, locale = 'en' }: TimeAgoProps) {
   // Initialize with computed value for SSR
-  const [timeAgo, setTimeAgo] = useState<string>(() => getTimeAgo(date))
+  const [timeAgo, setTimeAgo] = useState<string>(() => getTimeAgo(date, locale))
+  const absoluteDate = getAbsoluteDate(date)
 
   useEffect(() => {
     // Update immediately in case server/client time differs slightly
-    setTimeAgo(getTimeAgo(date))
+    setTimeAgo(getTimeAgo(date, locale))
 
     // Update every minute
     const interval = setInterval(() => {
-      setTimeAgo(getTimeAgo(date))
+      setTimeAgo(getTimeAgo(date, locale))
     }, 60000)
 
     return () => clearInterval(interval)
-  }, [date])
+  }, [date, locale])
 
-  return <span className={className}>{timeAgo}</span>
+  if (!timeAgo || !absoluteDate) {
+    return <span className={className}>{timeAgo}</span>
+  }
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className={className}>{timeAgo}</span>
+      </TooltipTrigger>
+      <TooltipContent side="top">{absoluteDate}</TooltipContent>
+    </Tooltip>
+  )
 }

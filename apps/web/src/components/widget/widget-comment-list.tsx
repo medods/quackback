@@ -15,6 +15,7 @@ import { getWidgetAuthHeaders } from '@/lib/client/widget-auth'
 import { getInitials, cn } from '@/lib/shared/utils'
 import type { PublicCommentView } from '@/lib/client/queries/portal-detail'
 import type { CommentReactionCount } from '@/lib/shared'
+import { getLanguage, t } from './i18n'
 
 const MAX_WIDGET_DEPTH = 2
 
@@ -151,7 +152,11 @@ function WidgetCommentItem({
               {comment.isRemovedByTeam ? '[removed]' : '[deleted]'}
             </span>
             <span className="text-muted-foreground/50 text-[10px]">&middot;</span>
-            <TimeAgo date={comment.createdAt} className="text-[10px] text-muted-foreground/60" />
+            <TimeAgo
+              date={comment.createdAt}
+              locale={getLanguage()}
+              className="text-[10px] text-muted-foreground/60"
+            />
           </div>
           {hasReplies && (
             <div className="flex items-center gap-1 mt-1.5 ml-7">
@@ -237,6 +242,7 @@ function WidgetCommentItem({
           <span className="text-muted-foreground/50 text-[10px]">&middot;</span>
           <TimeAgo
             date={comment.createdAt}
+            locale={getLanguage()}
             className="text-[10px] text-muted-foreground/60 shrink-0"
           />
         </div>
@@ -316,7 +322,7 @@ function WidgetCommentItem({
               className="inline-flex items-center gap-0.5 h-5 px-1 text-[10px] text-muted-foreground/60 hover:text-muted-foreground transition-colors"
             >
               <ArrowUturnLeftIcon className="h-2.5 w-2.5" />
-              Reply
+              {t('postDetail.reply')}
             </button>
           )}
         </div>
@@ -335,7 +341,7 @@ function WidgetCommentItem({
                 <textarea
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
-                  placeholder={`Reply to ${comment.authorName || 'Anonymous'}...`}
+                  placeholder={`${t('postDetail.replyTo')} ${comment.authorName || t('postDetail.anonymous')}...`}
                   rows={2}
                   ref={replyTextareaRef}
                   disabled={isSubmitting}
@@ -353,7 +359,7 @@ function WidgetCommentItem({
                   disabled={isSubmitting || !replyText.trim()}
                   className="self-end px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shrink-0"
                 >
-                  {isSubmitting ? '...' : 'Post'}
+                  {isSubmitting ? t('postDetail.submitting') : t('postDetail.submitComment')}
                 </button>
               </div>
               <button
@@ -364,7 +370,7 @@ function WidgetCommentItem({
                 }}
                 className="mt-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
               >
-                Cancel
+                {t('postDetail.cancel')}
               </button>
             </div>
           </div>
