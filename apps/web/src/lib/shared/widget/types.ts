@@ -35,6 +35,12 @@ export interface WidgetEventMap {
 
 export type WidgetEventName = keyof WidgetEventMap
 
+export type WidgetRoute =
+  | { view: 'home' }
+  | { view: 'post-detail'; postId: string }
+  | { view: 'changelog' }
+  | { view: 'changelog-detail'; changelogId: string }
+
 // ---- SDK -> Iframe Messages ----
 
 export interface WidgetInboundMessages {
@@ -43,9 +49,12 @@ export interface WidgetInboundMessages {
   'quackback:locale': string
   'quackback:open':
     | {
-        view?: 'home' | 'new-post'
+        view?: 'home' | 'new-post' | 'post-detail' | 'changelog' | 'changelog-detail' | 'help'
         title?: string
         board?: string
+        postId?: string
+        changelogId?: string
+        __fromRouteSync?: boolean
       }
     | undefined
 }
@@ -56,6 +65,7 @@ export interface WidgetOutboundMessages {
   'quackback:ready': Record<string, never>
   'quackback:close': Record<string, never>
   'quackback:navigate': { url: string }
+  'quackback:route-change': WidgetRoute
   'quackback:identify-result': {
     success: boolean
     user: { id: string; name: string; email: string; avatarUrl: string | null } | null
