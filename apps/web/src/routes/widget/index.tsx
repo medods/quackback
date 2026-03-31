@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
-import { useState, useCallback, useEffect, useMemo } from 'react'
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { CheckCircleIcon } from '@heroicons/react/24/solid'
 import { ArrowLeftIcon } from '@heroicons/react/24/outline'
 import { WidgetVoteButton } from '@/components/widget/widget-vote-button'
@@ -16,6 +16,7 @@ import { useWidgetAuth } from '@/components/widget/widget-auth-provider'
 import { portalQueries } from '@/lib/client/queries/portal'
 import { widgetQueryKeys, INITIAL_SESSION_VERSION } from '@/lib/client/hooks/use-widget-vote'
 import { t } from '@/components/widget/i18n'
+import type { WidgetRoute } from '@/lib/shared/widget/types'
 
 const searchSchema = z.object({
   board: z.string().optional(),
@@ -96,6 +97,13 @@ interface SuccessPost {
   board: { id: string; name: string; slug: string }
 }
 
+interface WidgetOpenMessageData {
+  view?: string
+  postId?: string
+  changelogId?: string
+  __fromRouteSync?: boolean
+}
+
 function WidgetPage() {
   const { posts, postsHasMore, statuses, boards, orgSlug, features, tabs, showCloseButton } =
     Route.useLoaderData()
@@ -112,11 +120,81 @@ function WidgetPage() {
   const [selectedChangelogId, setSelectedChangelogId] = useState<string | null>(null)
   const [selectedHelpSlug, setSelectedHelpSlug] = useState<string | null>(null)
   const [createdPosts, setCreatedPosts] = useState<typeof posts>([])
+  const suppressNextRouteSyncRef = useRef(false)
 
   const allPosts = useMemo(() => {
     const createdIds = new Set(createdPosts.map((p) => p.id))
     return [...createdPosts, ...posts.filter((p) => !createdIds.has(p.id))]
   }, [posts, createdPosts])
+
+  const setDefaultView = useCallback(() => {
+    if (tabs.feedback) {
+      setActiveTab('feedback')
+      setSelectedPostId(null)
+      setView('home')
+      return
+    }
+    if (tabs.changelog) {
+      setActiveTab('changelog')
+      setSelectedChangelogId(null)
+      setView('changelog')
+      return
+    }
+    setActiveTab('help')
+    setSelectedHelpSlug(null)
+    setView('help')
+  }, [tabs.feedback, tabs.changelog])
+
+  const applyOpenOptions = useCallback(
+    (opts: WidgetOpenMessageData) => {
+      if (opts.__fromRouteSync) {
+        suppressNextRouteSyncRef.current = true
+      }
+
+      if (opts.view === 'post-detail') {
+        if (tabs.feedback && typeof opts.postId === 'string' && opts.postId.length > 0) {
+          setActiveTab('feedback')
+          setSelectedPostId(opts.postId)
+          setView('post-detail')
+        } else {
+          setDefaultView()
+        }
+        return
+      }
+
+      if (opts.view === 'changelog-detail') {
+        if (tabs.changelog && typeof opts.changelogId === 'string' && opts.changelogId.length > 0) {
+          setActiveTab('changelog')
+          setSelectedChangelogId(opts.changelogId)
+          setView('changelog-detail')
+        } else {
+          setDefaultView()
+        }
+        return
+      }
+
+      if (opts.view === 'changelog') {
+        if (tabs.changelog) {
+          setActiveTab('changelog')
+          setSelectedChangelogId(null)
+          setView('changelog')
+        } else {
+          setDefaultView()
+        }
+        return
+      }
+
+      if (opts.view === 'help' && tabs.help) {
+        setActiveTab('help')
+        setSelectedHelpSlug(null)
+        setView('help')
+        return
+      }
+
+      setDefaultView()
+    },
+    [setDefaultView, tabs.feedback, tabs.changelog, tabs.help]
+  )
 
   // Listen for quackback:open messages from the SDK
   useEffect(() => {
@@ -124,19 +202,29 @@ function WidgetPage() {
       if (event.source !== window.parent) return
       const msg = event.data
       if (!msg || typeof msg !== 'object' || msg.type !== 'quackback:open' || !msg.data) return
-
-      const opts = msg.data as { view?: string }
-      if (opts.view === 'changelog' && tabs.changelog) {
-        setActiveTab('changelog')
-        setView('changelog')
-      } else if (opts.view === 'help' && tabs.help) {
-        setActiveTab('help')
-        setView('help')
-      }
+      applyOpenOptions(msg.data as WidgetOpenMessageData)
     }
     window.addEventListener('message', handleMessage)
     return () => window.removeEventListener('message', handleMessage)
-  }, [tabs.changelog, tabs.help])
+  }, [applyOpenOptions])
+
+  useEffect(() => {
+    if (suppressNextRouteSyncRef.current) {
+      suppressNextRouteSyncRef.current = false
+      return
+    }
+
+    const route: WidgetRoute =
+      view === 'post-detail' && selectedPostId
+        ? { view: 'post-detail', postId: selectedPostId }
+        : view === 'changelog-detail' && selectedChangelogId
+          ? { view: 'changelog-detail', changelogId: selectedChangelogId }
+          : view === 'changelog'
+            ? { view: 'changelog' }
+            : { view: 'home' }
+
+    window.parent.postMessage({ type: 'quackback:route-change', data: route }, '*')
+  }, [view, selectedPostId, selectedChangelogId])
 
   const handlePostCreated = useCallback((post: SuccessPost) => {
     setCreatedPosts((prev) => [

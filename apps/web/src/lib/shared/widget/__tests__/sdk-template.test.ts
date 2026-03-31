@@ -72,7 +72,35 @@ describe('buildWidgetSDK', () => {
     expect(result).toContain('"quackback:ready"')
     expect(result).toContain('"quackback:close"')
     expect(result).toContain('"quackback:navigate"')
+    expect(result).toContain('"quackback:route-change"')
     expect(result).toContain('"quackback:identify-result"')
+  })
+
+  it('should include default URL route sync query params', () => {
+    const result = buildWidgetSDK('https://feedback.acme.com')
+    expect(result).toContain('qb_page')
+    expect(result).toContain('qb_postId')
+    expect(result).toContain('qb_changelogId')
+  })
+
+  it('should support router plugin API in init config', () => {
+    const result = buildWidgetSDK('https://feedback.acme.com')
+    expect(result).toContain('config && config.router')
+    expect(result).toContain('typeof customRouter.read === "function"')
+    expect(result).toContain('typeof customRouter.write === "function"')
+  })
+
+  it('should support route views for post and changelog details', () => {
+    const result = buildWidgetSDK('https://feedback.acme.com')
+    expect(result).toContain('view === "post-detail"')
+    expect(result).toContain('view === "changelog-detail"')
+    expect(result).toContain('return { view: "home" };')
+  })
+
+  it('should accept widget route changes only after widget ready', () => {
+    const result = buildWidgetSDK('https://feedback.acme.com')
+    expect(result).toContain('acceptRouteChangesFromWidget = true;')
+    expect(result).toContain('acceptRouteChangesFromWidget && (isOpen || isEmbeddedMode())')
   })
 
   it('should escape special characters in base URL', () => {
