@@ -55,6 +55,11 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
   var iconClose = null;
   var listeners = {};
   var pendingOpen = null;
+  var routeAdapter = null;
+  var routeUnsubscribe = null;
+  var routeSyncLock = false;
+  var lastRouteKey = null;
+  var acceptRouteChangesFromWidget = false;
 
   // =========================================================================
   // Event System
@@ -99,6 +104,208 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
 
   function isEmbeddedMode() {
     return !!resolveMountNode();
+  }
+
+  // =========================================================================
+  // Router Sync
+  // =========================================================================
+
+  function asNonEmptyString(value) {
+    if (typeof value !== "string") return null;
+    var trimmed = value.trim();
+    return trimmed ? trimmed : null;
+  }
+
+  function normalizeRoute(route) {
+    if (!route || typeof route !== "object") return null;
+
+    var view = route.view;
+    if (view === "home") return { view: "home" };
+    if (view === "changelog") return { view: "changelog" };
+
+    if (view === "post-detail") {
+      var postId = asNonEmptyString(route.postId);
+      return postId ? { view: "post-detail", postId: postId } : { view: "home" };
+    }
+
+    if (view === "changelog-detail") {
+      var changelogId = asNonEmptyString(route.changelogId);
+      return changelogId
+        ? { view: "changelog-detail", changelogId: changelogId }
+        : { view: "home" };
+    }
+
+    return { view: "home" };
+  }
+
+  function getRouteKey(route) {
+    if (!route) return "";
+    if (route.view === "post-detail") return "post-detail:" + route.postId;
+    if (route.view === "changelog-detail") return "changelog-detail:" + route.changelogId;
+    return route.view;
+  }
+
+  function routeToOpenOptions(route) {
+    if (!route) return null;
+    if (route.view === "post-detail") {
+      return { view: "post-detail", postId: route.postId, __fromRouteSync: true };
+    }
+    if (route.view === "changelog") {
+      return { view: "changelog", __fromRouteSync: true };
+    }
+    if (route.view === "changelog-detail") {
+      return { view: "changelog-detail", changelogId: route.changelogId, __fromRouteSync: true };
+    }
+    return { view: "home", __fromRouteSync: true };
+  }
+
+  function readDefaultRoute() {
+    var params = new URLSearchParams(window.location.search);
+    var view = params.get("qb_page");
+    if (!view) return null;
+
+    return normalizeRoute({
+      view: view,
+      postId: params.get("qb_postId"),
+      changelogId: params.get("qb_changelogId"),
+    });
+  }
+
+  function writeDefaultRoute(route) {
+    var normalized = normalizeRoute(route);
+    if (!normalized) return;
+
+    var url = new URL(window.location.href);
+    url.searchParams.delete("qb_page");
+    url.searchParams.delete("qb_postId");
+    url.searchParams.delete("qb_changelogId");
+    url.searchParams.set("qb_page", normalized.view);
+
+    if (normalized.view === "post-detail") {
+      url.searchParams.set("qb_postId", normalized.postId);
+    }
+
+    if (normalized.view === "changelog-detail") {
+      url.searchParams.set("qb_changelogId", normalized.changelogId);
+    }
+
+    window.history.replaceState(window.history.state, "", url.toString());
+  }
+
+  function subscribeDefaultRoute(onRoute) {
+    var onPopState = function() {
+      var route = readDefaultRoute();
+      if (route) onRoute(route);
+    };
+    window.addEventListener("popstate", onPopState);
+    return function() {
+      window.removeEventListener("popstate", onPopState);
+    };
+  }
+
+  function getRouteAdapter() {
+    var customRouter = config && config.router;
+    if (
+      customRouter &&
+      typeof customRouter === "object" &&
+      typeof customRouter.read === "function" &&
+      typeof customRouter.write === "function"
+    ) {
+      return {
+        read: function() { return customRouter.read(); },
+        write: function(route) { return customRouter.write(route); },
+        subscribe:
+          typeof customRouter.subscribe === "function"
+            ? function(onRoute) { return customRouter.subscribe(onRoute); }
+            : undefined,
+      };
+    }
+
+    return {
+      read: readDefaultRoute,
+      write: writeDefaultRoute,
+      subscribe: subscribeDefaultRoute,
+    };
+  }
+
+  function applyRouteFromHost(route) {
+    var normalized = normalizeRoute(route);
+    if (!normalized) return;
+    var openOptions = routeToOpenOptions(normalized);
+    if (!openOptions) return;
+    if (isReady) sendToWidget("quackback:open", openOptions);
+    else pendingOpen = openOptions;
+    showPanel();
+  }
+
+  function syncHostRoute(route) {
+    if (!routeAdapter || typeof routeAdapter.write !== "function") return;
+    var normalized = normalizeRoute(route);
+    if (!normalized) return;
+
+    var routeKey = getRouteKey(normalized);
+    if (routeKey === lastRouteKey) return;
+
+    lastRouteKey = routeKey;
+    routeSyncLock = true;
+
+    var released = false;
+    function releaseLock() {
+      if (released) return;
+      released = true;
+      routeSyncLock = false;
+    }
+
+    try {
+      var result = routeAdapter.write(normalized);
+      if (result && typeof result.then === "function") {
+        result.then(releaseLock, releaseLock);
+      } else {
+        releaseLock();
+      }
+    } catch (e) {
+      releaseLock();
+    }
+  }
+
+  function teardownRouteSync() {
+    if (typeof routeUnsubscribe === "function") {
+      try { routeUnsubscribe(); } catch (e) {}
+    }
+    routeUnsubscribe = null;
+    routeAdapter = null;
+    routeSyncLock = false;
+    lastRouteKey = null;
+    acceptRouteChangesFromWidget = false;
+  }
+
+  function setupRouteSync() {
+    teardownRouteSync();
+    routeAdapter = getRouteAdapter();
+    acceptRouteChangesFromWidget = false;
+
+    if (routeAdapter && typeof routeAdapter.subscribe === "function") {
+      try {
+        var unsub = routeAdapter.subscribe(function(route) {
+          if (routeSyncLock) return;
+          var normalized = normalizeRoute(route);
+          if (!normalized) return;
+          var routeKey = getRouteKey(normalized);
+          if (routeKey === lastRouteKey) return;
+          lastRouteKey = routeKey;
+          applyRouteFromHost(normalized);
+        });
+        if (typeof unsub === "function") routeUnsubscribe = unsub;
+      } catch (e) {}
+    }
+
+    if (!routeAdapter || typeof routeAdapter.read !== "function") return;
+    try {
+      var initialRoute = normalizeRoute(routeAdapter.read());
+      if (!initialRoute) return;
+      lastRouteKey = getRouteKey(initialRoute);
+      applyRouteFromHost(initialRoute);
+    } catch (e) {}
   }
 
   // =========================================================================
@@ -365,6 +572,7 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
           sendToWidget("quackback:open", pendingOpen);
           pendingOpen = null;
         }
+        acceptRouteChangesFromWidget = true;
         emit("ready", {});
         break;
 
@@ -388,6 +596,12 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
       case "quackback:navigate":
         if (msg.url) window.open(msg.url, "_blank");
         break;
+
+      case "quackback:route-change":
+        if (acceptRouteChangesFromWidget && (isOpen || isEmbeddedMode())) {
+          syncHostRoute(msg.data);
+        }
+        break;
     }
   });
 
@@ -399,6 +613,7 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
     switch (command) {
       case "init":
         config = options || {};
+        setupRouteSync();
         if (isEmbeddedMode()) {
           createPanel();
           showPanel();
@@ -479,6 +694,7 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
 
       case "destroy":
         hidePanel();
+        teardownRouteSync();
         if (panel && panel.parentNode) panel.parentNode.removeChild(panel);
         if (trigger && trigger.parentNode) trigger.parentNode.removeChild(trigger);
         panel = null;
