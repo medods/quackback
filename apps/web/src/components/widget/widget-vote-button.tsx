@@ -23,11 +23,12 @@ export function WidgetVoteButton({
   onAuthRequired,
   compact = false,
 }: WidgetVoteButtonProps) {
-  const { sessionVersion } = useWidgetAuth()
+  const { sessionVersion, isIdentified } = useWidgetAuth()
   const { voteCount, hasVoted, isPending, handleVote } = useWidgetVote({
     postId,
     voteCount: initialVoteCount,
     sessionVersion,
+    trackVotedState: isIdentified,
   })
 
   const isHandlingRef = useRef(false)

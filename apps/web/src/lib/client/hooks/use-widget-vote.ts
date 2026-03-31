@@ -34,6 +34,8 @@ interface UseWidgetVoteOptions {
   /** Session version from WidgetAuthProvider — triggers refetch after identify */
   sessionVersion?: number
   enabled?: boolean
+  /** Whether voted-state should be fetched and reflected in UI. */
+  trackVotedState?: boolean
 }
 
 export function useWidgetVote({
@@ -41,6 +43,7 @@ export function useWidgetVote({
   voteCount,
   sessionVersion = 0,
   enabled = true,
+  trackVotedState = true,
 }: UseWidgetVoteOptions) {
   const queryClient = useQueryClient()
   // Ref tracks latest sessionVersion so mutation callbacks always write to the
@@ -59,7 +62,7 @@ export function useWidgetVote({
   // Include sessionVersion in the key so this refetches after identify.
   // Don't fetch until a token exists — avoids caching an empty set pre-auth.
   const hasToken = hasWidgetToken()
-  const { data: votedPosts } = useQuery<Set<string>>({
+  const { data: votedPosts, isError: isVotedPostsError } = useQuery<Set<string>>({
     queryKey: widgetQueryKeys.votedPosts.bySession(sessionVersion),
     queryFn: async () => {
       const headers = getWidgetAuthHeaders()
@@ -68,10 +71,11 @@ export function useWidgetVote({
       return new Set(result.votedPostIds)
     },
     staleTime: 5 * 60 * 1000,
-    enabled: enabled && hasToken,
+    enabled: enabled && trackVotedState && hasToken,
   })
 
-  const hasVoted = votedPosts?.has(postId) ?? false
+  const hasVoted =
+    trackVotedState && !isVotedPostsError ? (votedPosts?.has(postId) ?? false) : false
 
   const voteMutation = useMutation({
     mutationFn: (id: PostId) =>
