@@ -73,6 +73,7 @@ export const Route = createFileRoute('/widget/')({
         help: (settings?.featureFlags as { helpCenter?: boolean } | undefined)?.helpCenter ?? false,
       },
       imageUploadsInWidget: settings?.publicWidgetConfig?.imageUploadsInWidget ?? true,
+      showCloseButton: settings?.publicWidgetConfig?.showCloseButton ?? true,
     }
   },
   component: WidgetPage,
@@ -96,7 +97,7 @@ interface SuccessPost {
 }
 
 function WidgetPage() {
-  const { posts, postsHasMore, statuses, boards, orgSlug, features, tabs, imageUploadsInWidget } =
+  const { posts, postsHasMore, statuses, boards, orgSlug, features, tabs, showCloseButton, imageUploadsInWidget } =
     Route.useLoaderData()
   const { isIdentified, ensureSession } = useWidgetAuth()
   const canVote = isIdentified || features.anonymousVoting
@@ -207,6 +208,7 @@ function WidgetPage() {
       onTabChange={handleTabChange}
       onBack={shellOnBack}
       enabledTabs={tabs}
+      showCloseButton={showCloseButton}
     >
       {view === 'changelog' && <WidgetChangelog onEntrySelect={handleChangelogEntrySelect} />}
 

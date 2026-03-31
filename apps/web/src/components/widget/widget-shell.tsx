@@ -42,6 +42,7 @@ interface WidgetShellProps {
   onTabChange: (tab: WidgetTab) => void
   onBack?: () => void
   enabledTabs?: { feedback?: boolean; changelog?: boolean; help?: boolean }
+  showCloseButton?: boolean
   children: ReactNode
 }
 
@@ -51,6 +52,7 @@ export function WidgetShell({
   onTabChange,
   onBack,
   enabledTabs = { feedback: true, changelog: false, help: false },
+  showCloseButton = true,
   children,
 }: WidgetShellProps) {
   const intl = useIntl()

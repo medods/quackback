@@ -11,6 +11,7 @@ import { cn } from '@/lib/shared/utils'
 interface WidgetPreviewProps {
   position: 'bottom-right' | 'bottom-left'
   tabs?: { feedback: boolean; changelog: boolean }
+  showCloseButton?: boolean
 }
 
 type PreviewTab = 'feedback' | 'changelog'
@@ -18,6 +19,7 @@ type PreviewTab = 'feedback' | 'changelog'
 export function WidgetPreview({
   position,
   tabs = { feedback: true, changelog: false },
+  showCloseButton = true,
 }: WidgetPreviewProps) {
   const [isOpen, setIsOpen] = useState(true)
   const showTabBar = tabs.feedback && tabs.changelog
@@ -49,13 +51,15 @@ export function WidgetPreview({
             <p className="text-[10px] font-semibold text-foreground px-0.5">
               {activeTab === 'feedback' ? 'Share your ideas' : "What's new"}
             </p>
-            <button
-              type="button"
-              onClick={() => setIsOpen(false)}
-              className="w-5 h-5 flex items-center justify-center rounded-md hover:bg-muted transition-colors shrink-0"
-            >
-              <XMarkIcon className="w-3 h-3 text-muted-foreground" />
-            </button>
+            {showCloseButton && (
+              <button
+                type="button"
+                onClick={() => setIsOpen(false)}
+                className="w-5 h-5 flex items-center justify-center rounded-md hover:bg-muted transition-colors shrink-0"
+              >
+                <XMarkIcon className="w-3 h-3 text-muted-foreground" />
+              </button>
+            )}
           </div>
 
           {/* Content area */}

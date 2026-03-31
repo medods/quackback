@@ -123,6 +123,9 @@ function WidgetSettingsPage() {
     feedback: config.tabs?.feedback ?? true,
     changelog: config.tabs?.changelog ?? false,
   })
+  const [previewShowCloseButton, setPreviewShowCloseButton] = useState(
+    (config as { showCloseButton?: boolean }).showCloseButton ?? true
+  )
 
   return (
     <div className="space-y-6 max-w-5xl">
@@ -146,10 +149,16 @@ function WidgetSettingsPage() {
             position={position}
             onPositionChange={setPosition}
             onTabsChange={setPreviewTabs}
+            showCloseButton={previewShowCloseButton}
+            onShowCloseButtonChange={setPreviewShowCloseButton}
           />
         </BrandingControlsPanel>
         <BrandingPreviewPanel label="Preview">
-          <WidgetPreview position={position} tabs={previewTabs} />
+          <WidgetPreview
+            position={position}
+            tabs={previewTabs}
+            showCloseButton={previewShowCloseButton}
+          />
         </BrandingPreviewPanel>
       </BrandingLayout>
 
@@ -211,16 +220,21 @@ function WidgetAppearanceControls({
   position,
   onPositionChange,
   onTabsChange,
+  showCloseButton,
+  onShowCloseButtonChange,
 }: {
   config: {
     defaultBoard?: string
     position?: string
     tabs?: { feedback?: boolean; changelog?: boolean }
+    showCloseButton?: boolean
   }
   boards: { id: string; name: string; slug: string }[]
   position: 'bottom-right' | 'bottom-left'
   onPositionChange: (val: 'bottom-right' | 'bottom-left') => void
   onTabsChange: (tabs: { feedback: boolean; changelog: boolean }) => void
+  showCloseButton: boolean
+  onShowCloseButtonChange: (val: boolean) => void
 }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -273,6 +287,29 @@ function WidgetAppearanceControls({
               <SelectItem value="bottom-left">Bottom Left</SelectItem>
             </SelectContent>
           </Select>
+        </div>
+
+        <div className="flex items-center justify-between rounded-lg border border-border/50 px-3 py-2.5">
+          <div>
+            <Label htmlFor="show-close-button" className="text-xs font-medium cursor-pointer">
+              Show close button
+            </Label>
+            <p className="text-[11px] text-muted-foreground">
+              Display a close button in the widget header
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch
+              id="show-close-button"
+              checked={showCloseButton}
+              onCheckedChange={(checked) => {
+                onShowCloseButtonChange(checked)
+                save({ showCloseButton: checked })
+              }}
+              disabled={isBusy}
+              aria-label="Show close button"
+            />
+          </div>
         </div>
       </div>
 
