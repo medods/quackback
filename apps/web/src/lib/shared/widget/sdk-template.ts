@@ -3,9 +3,9 @@
  *
  * Generates a vanilla JS SDK (~10KB) that:
  * - Replays the command queue from the inline snippet
- * - Creates and manages the trigger button + iframe panel
+ * - Creates and manages either the trigger button + iframe panel or embedded panel
  * - Handles identify via postMessage to iframe
- * - Supports floating (popover) mode
+ * - Supports floating (popover) and embedded (selector) modes
  *
  * The SDK is generated as a string and served by the /api/widget/sdk.js route.
  */
@@ -84,6 +84,23 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
     return el;
   }
 
+  function resolveMountNode() {
+    if (!config) return null;
+    var selector = config.selector || config.mountSelector;
+    if (typeof selector !== "string") return null;
+    selector = selector.trim();
+    if (!selector) return null;
+    try {
+      return document.querySelector(selector);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function isEmbeddedMode() {
+    return !!resolveMountNode();
+  }
+
   // =========================================================================
   // Trigger Button
   // =========================================================================
@@ -111,6 +128,8 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
   }
 
   function createTrigger() {
+    if (isEmbeddedMode()) return;
+
     var placement = (config && config.placement) || "right";
     var colors = getThemeColors();
 
@@ -202,6 +221,8 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
   function createPanel() {
     if (panel) return;
 
+    var mountNode = resolveMountNode();
+    var embedded = !!mountNode;
     var placement = (config && config.placement) || "right";
     var boardParam = config && config.defaultBoard ? "board=" + encodeURIComponent(config.defaultBoard) : "";
     var closeParam = config && config.trigger === false ? "showClose=1" : "";
@@ -210,20 +231,22 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
 
     // Panel container
     panel = createElement("div", {
-      position: "fixed",
-      bottom: "88px",
-      [placement === "left" ? "left" : "right"]: "24px",
-      zIndex: "2147483647",
-      width: "400px",
-      height: "min(600px, calc(100vh - 108px))",
-      borderRadius: "12px",
+      position: embedded ? "relative" : "fixed",
+      bottom: embedded ? "auto" : "24px",
+      [placement === "left" ? "left" : "right"]: embedded ? "auto" : "24px",
+      zIndex: embedded ? "auto" : "2147483647",
+      width: embedded ? "100%" : "400px",
+      maxWidth: "100%",
+      height: embedded ? "100%" : "min(600px, calc(100vh - 100px))",
+      minHeight: embedded ? "500px" : "0",
+      borderRadius: embedded ? "0" : "12px",
       overflow: "hidden",
-      boxShadow: "0 8px 30px rgba(0,0,0,0.12)",
-      display: "none",
-      opacity: "0",
-      transform: "scale(0)",
-      transformOrigin: placement === "left" ? "bottom left" : "bottom right",
-      
+      boxShadow: embedded ? "none" : "0 8px 30px rgba(0,0,0,0.12)",
+      display: embedded ? "block" : "none",
+      opacity: embedded ? "1" : "0",
+      transform: embedded ? "none" : "scale(0.95)",
+      transformOrigin: embedded ? "center center" : placement === "left" ? "bottom left" : "bottom right",
+      transition: embedded ? "none" : "opacity 200ms ease-out, transform 200ms ease-out",
     }, {
       className: "quackback-widget-iframe-wrapper",
     });
@@ -236,17 +259,27 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
       colorScheme: "normal",
     }, {
       src: iframeUrl,
-      title: "Feedback Widget",
       sandbox: "allow-scripts allow-forms allow-same-origin allow-popups",
       className: "quackback-widget-iframe",
     });
 
     panel.appendChild(iframe);
-    document.body.appendChild(panel);
+    if (mountNode) mountNode.appendChild(panel);
+    else document.body.appendChild(panel);
   }
 
   function showPanel() {
     if (!panel) createPanel();
+    if (!panel) return;
+
+    if (isEmbeddedMode()) {
+      if (!isOpen) {
+        isOpen = true;
+        emit("open", {});
+      }
+      return;
+    }
+
     if (isOpen) return;
     isOpen = true;
 
@@ -277,6 +310,9 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
 
   function hidePanel() {
     if (!isOpen) return;
+
+    if (isEmbeddedMode()) return;
+
     isOpen = false;
 
     if (trigger && isIdentified && !(config && config.trigger === false)) {
@@ -363,6 +399,10 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
     switch (command) {
       case "init":
         config = options || {};
+        if (isEmbeddedMode()) {
+          createPanel();
+          showPanel();
+        }
         break;
 
       case "identify":
@@ -377,7 +417,7 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
           // Show trigger on first identify
           if (!isIdentified) {
             isIdentified = true;
-            if (!(config && config.trigger === false)) {
+            if (!isEmbeddedMode() && !(config && config.trigger === false)) {
               if (!trigger) createTrigger();
               else trigger.style.display = "flex";
             }
@@ -386,6 +426,7 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
           // the identify round-trip in the background — before the user opens
           // the panel. This eliminates the visible delay on vote highlights.
           if (!panel) createPanel();
+          if (isEmbeddedMode()) showPanel();
           if (isReady) sendToWidget("quackback:identify", options);
           else pendingIdentify = options;
         }
