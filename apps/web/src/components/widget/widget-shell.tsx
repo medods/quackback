@@ -31,7 +31,6 @@ interface WidgetShellProps {
 }
 
 export function WidgetShell({
-  orgSlug,
   activeTab,
   onTabChange,
   onBack,
@@ -44,9 +43,6 @@ export function WidgetShell({
   ).length
   const showTabBar = enabledCount > 1
   const { user, closeWidget } = useWidgetAuth()
-  const showCloseButton =
-    typeof window !== 'undefined' &&
-    new URLSearchParams(window.location.search).get('showClose') === '1'
 
   // Global Escape key handler — close widget from anywhere
   useEffect(() => {
@@ -60,7 +56,7 @@ export function WidgetShell({
   }, [closeWidget])
 
   return (
-    <div className="flex flex-col h-full bg-background text-foreground overflow-x-hidden">
+    <div className="flex flex-col h-full bg-background text-foreground">
       <div className="flex items-center justify-between px-3 pt-2 pb-0.5 shrink-0">
         <div className="flex items-center gap-1">
           {onBack ? (
@@ -121,25 +117,6 @@ export function WidgetShell({
             ))}
           </div>
         )}
-
-        <div className="border-t border-border/20 py-2 flex items-center justify-center">
-          <a
-            href={`https://quackback.io?utm_campaign=${encodeURIComponent(orgSlug || 'unknown')}&utm_content=widget&utm_medium=referral&utm_source=powered-by`}
-            target="_blank"
-            className="group inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-all"
-          >
-            <img
-              src="/logo.png"
-              alt=""
-              width={11}
-              height={11}
-              className="opacity-60 group-hover:opacity-100 transition-opacity"
-            />
-            <span>
-              Powered by <span className="font-medium">Quackback</span>
-            </span>
-          </a>
-        </div>
       </div>
     </div>
   )
