@@ -15,6 +15,7 @@ import { WidgetHelpDetail } from '@/components/widget/widget-help-detail'
 import { useWidgetAuth } from '@/components/widget/widget-auth-provider'
 import { portalQueries } from '@/lib/client/queries/portal'
 import { widgetQueryKeys, INITIAL_SESSION_VERSION } from '@/lib/client/hooks/use-widget-vote'
+import { t } from '@/components/widget/i18n'
 
 const searchSchema = z.object({
   board: z.string().optional(),
@@ -270,8 +271,10 @@ function WidgetPage() {
                   <CheckCircleIcon className="w-4.5 h-4.5 text-primary" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-foreground">Thanks for your feedback!</p>
-                  <p className="text-[11px] text-muted-foreground">Your idea has been submitted.</p>
+                  <p className="text-sm font-semibold text-foreground">
+                    {t('success.thanksForFeedback')}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">{t('success.ideaSubmitted')}</p>
                 </div>
               </div>
 
@@ -319,7 +322,7 @@ function WidgetPage() {
                   className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium text-foreground bg-muted/30 hover:bg-muted/50 rounded-lg border border-border/50 transition-colors"
                 >
                   <ArrowLeftIcon className="w-3.5 h-3.5" />
-                  Back to ideas
+                  {t('home.backToIdeas')}
                 </button>
               </div>
             </div>

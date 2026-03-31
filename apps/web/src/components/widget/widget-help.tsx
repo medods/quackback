@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useIntl, FormattedMessage } from 'react-intl'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { MagnifyingGlassIcon, QuestionMarkCircleIcon } from '@heroicons/react/24/outline'
+import { t } from './i18n'
 
 interface WidgetHelpArticle {
   id: string
@@ -16,7 +16,6 @@ interface WidgetHelpProps {
 }
 
 export function WidgetHelp({ onArticleSelect }: WidgetHelpProps) {
-  const intl = useIntl()
   const [search, setSearch] = useState('')
   const [results, setResults] = useState<WidgetHelpArticle[]>([])
   const [isSearching, setIsSearching] = useState(false)
@@ -71,16 +70,13 @@ export function WidgetHelp({ onArticleSelect }: WidgetHelpProps) {
       {/* Search bar */}
       <div className="px-3 pt-2 pb-1 shrink-0">
         <div className="relative">
-          <MagnifyingGlassIcon className="absolute start-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50" />
+          <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder={intl.formatMessage({
-              id: 'widget.help.searchPlaceholder',
-              defaultMessage: 'Search help articles...',
-            })}
-            className="w-full ps-8 pe-3 py-2 text-sm bg-muted/30 border border-border/50 rounded-lg placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-ring/50 focus:border-transparent"
+            placeholder={t('help.searchPlaceholder')}
+            className="w-full pl-8 pr-3 py-2 text-sm bg-muted/30 border border-border/50 rounded-lg placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-ring/50 focus:border-transparent"
           />
         </div>
       </div>
@@ -89,23 +85,16 @@ export function WidgetHelp({ onArticleSelect }: WidgetHelpProps) {
         <div className="px-3 pt-1 pb-3">
           {isSearching && (
             <div className="flex items-center justify-center py-8">
-              <span className="text-xs text-muted-foreground/50">
-                <FormattedMessage id="widget.help.searching" defaultMessage="Searching..." />
-              </span>
+              <span className="text-xs text-muted-foreground/50">{t('help.searching')}</span>
             </div>
           )}
 
           {!isSearching && search && results.length === 0 && (
             <div className="flex flex-col items-center justify-center py-8 text-center px-4">
               <QuestionMarkCircleIcon className="w-8 h-8 text-muted-foreground/30 mb-2" />
-              <p className="text-sm font-medium text-muted-foreground/70">
-                <FormattedMessage id="widget.help.noResults" defaultMessage="No results found" />
-              </p>
+              <p className="text-sm font-medium text-muted-foreground/70">{t('help.noResults')}</p>
               <p className="text-xs text-muted-foreground/50 mt-0.5">
-                <FormattedMessage
-                  id="widget.help.noResultsHint"
-                  defaultMessage="Try different keywords or browse categories."
-                />
+                {t('help.tryDifferentKeywords')}
               </p>
             </div>
           )}
@@ -114,13 +103,10 @@ export function WidgetHelp({ onArticleSelect }: WidgetHelpProps) {
             <div className="flex flex-col items-center justify-center py-8 text-center px-4">
               <QuestionMarkCircleIcon className="w-8 h-8 text-muted-foreground/30 mb-2" />
               <p className="text-sm font-medium text-muted-foreground/70">
-                <FormattedMessage id="widget.help.emptyHeading" defaultMessage="Search for help" />
+                {t('help.searchForHelp')}
               </p>
               <p className="text-xs text-muted-foreground/50 mt-0.5">
-                <FormattedMessage
-                  id="widget.help.emptyHint"
-                  defaultMessage="Type a question or keyword above to find help articles."
-                />
+                {t('help.typeQuestionOrKeyword')}
               </p>
             </div>
           )}
@@ -132,7 +118,7 @@ export function WidgetHelp({ onArticleSelect }: WidgetHelpProps) {
                   key={article.id}
                   type="button"
                   onClick={() => onArticleSelect?.(article.slug)}
-                  className="w-full text-start rounded-lg hover:bg-muted/30 transition-colors px-2.5 py-2.5 cursor-pointer"
+                  className="w-full text-left rounded-lg hover:bg-muted/30 transition-colors px-2.5 py-2.5 cursor-pointer"
                 >
                   <div className="flex items-center gap-2 mb-0.5">
                     <span className="text-[10px] font-medium text-muted-foreground/60 uppercase tracking-wide">

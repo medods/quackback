@@ -6,35 +6,14 @@ import {
   NewspaperIcon,
   BookOpenIcon,
 } from '@heroicons/react/24/solid'
-import { FormattedMessage, useIntl } from 'react-intl'
 import { cn } from '@/lib/shared/utils'
 import { Avatar } from '@/components/ui/avatar'
 import { UserStatsBar } from '@/components/shared/user-stats'
 import { getWidgetAuthHeaders } from '@/lib/client/widget-auth'
 import { useWidgetAuth } from './widget-auth-provider'
+import { t } from './i18n'
 
 export type WidgetTab = 'feedback' | 'changelog' | 'help'
-
-const TAB_CONFIG: {
-  tab: WidgetTab
-  icon: typeof LightBulbIcon
-  labelId: string
-  defaultLabel: string
-}[] = [
-  {
-    tab: 'feedback',
-    icon: LightBulbIcon,
-    labelId: 'widget.shell.tab.feedback',
-    defaultLabel: 'Feedback',
-  },
-  {
-    tab: 'changelog',
-    icon: NewspaperIcon,
-    labelId: 'widget.shell.tab.changelog',
-    defaultLabel: 'Changelog',
-  },
-  { tab: 'help', icon: BookOpenIcon, labelId: 'widget.shell.tab.help', defaultLabel: 'Help' },
-]
 
 interface WidgetShellProps {
   orgSlug: string
@@ -54,33 +33,16 @@ export function WidgetShell({
   showCloseButton = true,
   children,
 }: WidgetShellProps) {
-  const intl = useIntl()
   const enabledCount = [enabledTabs.feedback, enabledTabs.changelog, enabledTabs.help].filter(
     Boolean
   ).length
   const showTabBar = enabledCount > 1
   const { user, closeWidget } = useWidgetAuth()
-  const isNative =
-    typeof window !== 'undefined' &&
-    new URLSearchParams(window.location.search).get('source') === 'native'
-  const showCloseExplicit =
-    typeof window !== 'undefined' &&
-    new URLSearchParams(window.location.search).get('showClose') === '1'
-  // The widget runs in a ~400px iframe on desktop, so we can't use
-  // window.innerWidth to detect mobile. Instead the parent SDK sends
-  // a 'quackback:mobile' postMessage when the viewport crosses 640px.
-  // Native SDK context always shows the close button.
-  const [parentIsMobile, setParentIsMobile] = useState(false)
-  useEffect(() => {
-    function handleMobileMsg(event: MessageEvent) {
-      if (event.data?.type === 'quackback:mobile') {
-        setParentIsMobile(!!event.data.data)
-      }
-    }
-    window.addEventListener('message', handleMobileMsg)
-    return () => window.removeEventListener('message', handleMobileMsg)
-  }, [])
-  const showCloseButton = showCloseExplicit || isNative || parentIsMobile
+  const tabConfig: { tab: WidgetTab; icon: typeof LightBulbIcon; label: string }[] = [
+    { tab: 'feedback', icon: LightBulbIcon, label: t('shell.feedback') },
+    { tab: 'changelog', icon: NewspaperIcon, label: t('shell.changelog') },
+    { tab: 'help', icon: BookOpenIcon, label: t('shell.help') },
+  ]
 
   // Global Escape key handler — close widget from anywhere
   useEffect(() => {
@@ -102,25 +64,17 @@ export function WidgetShell({
               type="button"
               onClick={onBack}
               className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-muted transition-colors"
-              aria-label={intl.formatMessage({
-                id: 'widget.shell.aria.goBack',
-                defaultMessage: 'Go back',
-              })}
+              aria-label={t('shell.goBack')}
             >
               <ArrowLeftIcon className="w-4 h-4 text-muted-foreground" />
             </button>
           ) : (
-            <h2 className="text-sm font-semibold text-foreground ps-0.5">
-              {activeTab === 'feedback' ? (
-                <FormattedMessage
-                  id="widget.shell.heading.feedback"
-                  defaultMessage="Share your ideas"
-                />
-              ) : activeTab === 'help' ? (
-                <FormattedMessage id="widget.shell.heading.help" defaultMessage="Help Center" />
-              ) : (
-                <FormattedMessage id="widget.shell.heading.changelog" defaultMessage="What's new" />
-              )}
+            <h2 className="text-sm font-semibold text-foreground pl-0.5">
+              {activeTab === 'feedback'
+                ? t('shell.shareIdeas')
+                : activeTab === 'help'
+                  ? t('shell.helpCenter')
+                  : t('shell.whatsNew')}
             </h2>
           )}
         </div>
@@ -131,10 +85,7 @@ export function WidgetShell({
               type="button"
               onClick={closeWidget}
               className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-muted transition-colors"
-              aria-label={intl.formatMessage({
-                id: 'widget.shell.aria.close',
-                defaultMessage: 'Close feedback widget',
-              })}
+              aria-label={t('shell.closeWidget')}
             >
               <XMarkIcon className="w-4 h-4 text-muted-foreground" />
             </button>
@@ -148,8 +99,9 @@ export function WidgetShell({
       <div className="border-t border-border/40 shrink-0">
         {showTabBar && (
           <div className="flex">
-            {TAB_CONFIG.filter(({ tab }) => enabledTabs[tab]).map(
-              ({ tab, icon: Icon, labelId, defaultLabel }) => (
+            {tabConfig
+              .filter(({ tab }) => enabledTabs[tab])
+              .map(({ tab, icon: Icon, label }) => (
                 <button
                   key={tab}
                   type="button"
@@ -162,12 +114,9 @@ export function WidgetShell({
                   )}
                 >
                   <Icon className="w-5 h-5" />
-                  <span className="text-xs font-medium">
-                    <FormattedMessage id={labelId} defaultMessage={defaultLabel} />
-                  </span>
+                  <span className="text-xs font-medium">{label}</span>
                 </button>
-              )
-            )}
+              ))}
           </div>
         )}
       </div>
@@ -180,7 +129,6 @@ function UserAvatarPopover({
 }: {
   user: { name: string; email: string; avatarUrl: string | null }
 }) {
-  const intl = useIntl()
   const [open, setOpen] = useState(false)
   const popoverRef = useRef<HTMLDivElement>(null)
 
@@ -201,16 +149,13 @@ function UserAvatarPopover({
         type="button"
         onClick={() => setOpen(!open)}
         className="w-7 h-7 flex items-center justify-center rounded-full hover:ring-2 hover:ring-primary/20 transition-all"
-        aria-label={intl.formatMessage({
-          id: 'widget.shell.aria.userMenu',
-          defaultMessage: 'User menu',
-        })}
+        aria-label={t('shell.userMenu')}
       >
-        <Avatar src={user.avatarUrl} name={user.name} className="size-7 text-[10px]" />
+        <Avatar src={user.avatarUrl} name={user.name} className="size-6 text-[10px]" />
       </button>
 
       {open && (
-        <div className="absolute end-0 top-full mt-1.5 z-50 w-56 rounded-lg border border-border bg-card shadow-lg">
+        <div className="absolute right-0 top-full mt-1.5 z-50 w-56 rounded-lg border border-border bg-card shadow-lg">
           <div className="px-3 py-3">
             <div className="flex items-center gap-2.5">
               <Avatar src={user.avatarUrl} name={user.name} className="size-9 text-sm" />

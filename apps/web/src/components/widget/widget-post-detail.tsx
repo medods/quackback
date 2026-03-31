@@ -1,7 +1,6 @@
 import { useCallback, useRef, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChatBubbleLeftIcon, Squares2X2Icon } from '@heroicons/react/24/solid'
-import { useIntl, FormattedMessage } from 'react-intl'
 import { TimeAgo } from '@/components/ui/time-ago'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { PostContent } from '@/components/public/post-content'
@@ -14,9 +13,9 @@ import type { PublicPostDetailView } from '@/lib/client/queries/portal-detail'
 import { WidgetVoteButton } from './widget-vote-button'
 import { WidgetCommentList } from './widget-comment-list'
 import { useWidgetAuth } from './widget-auth-provider'
-import { sendToHost } from '@/lib/client/widget-bridge'
 import { WidgetCommentForm } from './widget-comment-form'
 import { WidgetPortalTitle } from './widget-portal-title'
+import { t } from './i18n'
 import type { PostId } from '@quackback/ids'
 
 interface StatusInfo {
@@ -38,7 +37,6 @@ export function WidgetPostDetail({
   anonymousVotingEnabled = true,
   anonymousCommentingEnabled = false,
 }: WidgetPostDetailProps) {
-  const intl = useIntl()
   const {
     isIdentified,
     hmacRequired,
@@ -64,7 +62,7 @@ export function WidgetPostDetail({
         data: { postId },
         headers: getWidgetAuthHeaders(),
       })
-      if (!result) throw new Error('Post not found')
+      if (!result) throw new Error(t('postDetail.postNotFound'))
       return result as PublicPostDetailView
     },
     staleTime: 30 * 1000,
@@ -82,7 +80,7 @@ export function WidgetPostDetail({
       isIdentified,
       ott,
     })
-    sendToHost({ type: 'quackback:navigate', url })
+    window.parent.postMessage({ type: 'quackback:navigate', url }, '*')
   }, [post, isIdentified])
 
   /** Submit a comment (root or reply). */
@@ -143,19 +141,9 @@ export function WidgetPostDetail({
   if (error || !post) {
     return (
       <div className="flex flex-col items-center justify-center h-full px-4 text-center">
-        <p className="text-sm text-muted-foreground">
-          <FormattedMessage
-            id="widget.postDetail.error.couldNotLoad"
-            defaultMessage="Could not load post"
-          />
-        </p>
+        <p className="text-sm text-muted-foreground">{t('postDetail.error')}</p>
         <p className="text-xs text-muted-foreground/60 mt-1">
-          {error instanceof Error
-            ? error.message
-            : intl.formatMessage({
-                id: 'widget.postDetail.error.somethingWrong',
-                defaultMessage: 'Something went wrong',
-              })}
+          {error instanceof Error ? error.message : t('postDetail.somethingWentWrong')}
         </p>
       </div>
     )
@@ -198,13 +186,7 @@ export function WidgetPostDetail({
             </div>
             <WidgetPortalTitle title={post.title} onClick={handleViewOnPortal} />
             <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground/60 mt-1">
-              <span>
-                {post.authorName ||
-                  intl.formatMessage({
-                    id: 'widget.postDetail.authorFallback',
-                    defaultMessage: 'Anonymous',
-                  })}
-              </span>
+              <span>{post.authorName || t('postDetail.anonymous')}</span>
               <span className="text-muted-foreground/30">&middot;</span>
               <TimeAgo date={post.createdAt} />
               <span className="text-muted-foreground/30">&middot;</span>
@@ -229,21 +211,13 @@ export function WidgetPostDetail({
         {post.pinnedComment && (
           <div className="rounded-md border border-primary/20 bg-primary/[0.03] p-2.5">
             <p className="text-[10px] font-medium text-primary mb-1">
-              <FormattedMessage
-                id="widget.postDetail.officialResponse"
-                defaultMessage="Official response"
-              />
+              {t('postDetail.officialResponse')}
             </p>
             <p className="text-xs text-foreground/80 whitespace-pre-wrap leading-relaxed">
               {post.pinnedComment.content}
             </p>
             <p className="text-[10px] text-muted-foreground/60 mt-1">
-              &mdash;{' '}
-              {post.pinnedComment.authorName ||
-                intl.formatMessage({
-                  id: 'widget.postDetail.teamAuthorFallback',
-                  defaultMessage: 'Team',
-                })}
+              — {post.pinnedComment.authorName || t('postDetail.team')}
             </p>
           </div>
         )}
@@ -253,11 +227,8 @@ export function WidgetPostDetail({
           <div className="flex items-center gap-1.5 mb-3">
             <ChatBubbleLeftIcon className="h-3.5 w-3.5 text-muted-foreground/50" />
             <span className="text-xs font-medium text-muted-foreground">
-              <FormattedMessage
-                id="widget.postDetail.comments"
-                defaultMessage="{count, plural, one {# comment} other {# comments}}"
-                values={{ count: liveCommentCount }}
-              />
+              {liveCommentCount}{' '}
+              {liveCommentCount === 1 ? t('postDetail.comment') : t('postDetail.comments')}
             </span>
           </div>
 
@@ -277,19 +248,13 @@ export function WidgetPostDetail({
               onClick={handleViewOnPortal}
               className="text-[10px] text-primary hover:text-primary/80 transition-colors mb-3"
             >
-              <FormattedMessage
-                id="widget.postDetail.loginToComment"
-                defaultMessage="Log in to join the conversation"
-              />
+              {t('postDetail.loginToJoinConversation')}
             </button>
           )}
 
           {post.isCommentsLocked && (
             <p className="text-[10px] text-muted-foreground/50 mb-3">
-              <FormattedMessage
-                id="widget.postDetail.commentsLocked"
-                defaultMessage="Comments are locked on this post"
-              />
+              {t('postDetail.commentsLocked')}
             </p>
           )}
 
