@@ -45,7 +45,21 @@ export function hasAuthCredentials(): boolean {
  */
 async function getSessionDirect(): Promise<SessionResult | null> {
   try {
-    return await auth.api.getSession({ headers: getRequestHeaders() })
+    const incomingHeaders = getRequestHeaders()
+    const authHeader =
+      incomingHeaders.get('authorization') ?? incomingHeaders.get('Authorization') ?? ''
+
+    // When Bearer auth is present (widget requests), remove cookie auth to avoid
+    // resolving the wrong user when both credentials are sent.
+    const headers = authHeader.startsWith('Bearer ')
+      ? (() => {
+          const h = new Headers(incomingHeaders)
+          h.delete('cookie')
+          return h
+        })()
+      : incomingHeaders
+
+    return await auth.api.getSession({ headers })
   } catch (error) {
     console.error('[auth] Failed to get session:', error)
     return null

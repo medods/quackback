@@ -9,6 +9,7 @@
 import type { PrincipalId, UserId } from '@quackback/ids'
 import { db, session, principal, eq, and, gt } from '@/lib/server/db'
 import { mergeAnonymousToIdentified } from './merge-anonymous'
+import { getSessionTokenCandidates } from './session-token-candidates'
 
 interface ResolveAndMergeParams {
   /** The previous widget session token (captured before re-identify) */
@@ -29,11 +30,18 @@ export async function resolveAndMergeAnonymousToken(params: ResolveAndMergeParam
   if (!previousToken) return
 
   try {
-    // Look up the session for the previous token
-    const prevSession = await db.query.session.findFirst({
-      where: and(eq(session.token, previousToken), gt(session.expiresAt, new Date())),
-      with: { user: true },
-    })
+    // Look up the session for the previous token (supports signed cookie tokens).
+    const tokenCandidates = getSessionTokenCandidates(previousToken)
+    let prevSession: Awaited<ReturnType<typeof db.query.session.findFirst>> | null = null
+
+    for (const token of tokenCandidates) {
+      prevSession = await db.query.session.findFirst({
+        where: and(eq(session.token, token), gt(session.expiresAt, new Date())),
+        with: { user: true },
+      })
+      if (prevSession) break
+    }
+
     if (!prevSession) return
 
     const prevUserId = prevSession.userId as UserId

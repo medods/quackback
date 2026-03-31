@@ -3,11 +3,16 @@ import { createHmac, timingSafeEqual } from 'crypto'
 import { z } from 'zod'
 import { generateId } from '@quackback/ids'
 import type { UserId, PrincipalId } from '@quackback/ids'
-import { db, user, session, principal, eq, and, gt } from '@/lib/server/db'
+import { db, session, principal, eq, and, gt } from '@/lib/server/db'
 import { getWidgetConfig, getWidgetSecret } from '@/lib/server/domains/settings/settings.widget'
 import { getAllUserVotedPostIds } from '@/lib/server/domains/posts/post.public'
 import { getPublicUrlOrNull } from '@/lib/server/storage/s3'
 import { resolveAndMergeAnonymousToken } from '@/lib/server/auth/identify-merge'
+import {
+  upsertWidgetIdentifiedUser,
+  WidgetIdentifyExternalIdConflictError,
+} from '@/lib/server/auth/widget-identify-user'
+import { getSessionTokenCandidates } from '@/lib/server/auth/session-token-candidates'
 
 // Accept either legacy HMAC fields or a JWT ssoToken
 const identifySchema = z
@@ -32,6 +37,17 @@ const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
 
 function jsonError(code: string, message: string, status: number): Response {
   return Response.json({ error: { code, message } }, { status })
+}
+
+async function findSessionUserIdFromToken(token: string): Promise<UserId | null> {
+  for (const candidate of getSessionTokenCandidates(token)) {
+    const found = await db.query.session.findFirst({
+      where: and(eq(session.token, candidate), gt(session.expiresAt, new Date())),
+      columns: { userId: true },
+    })
+    if (found?.userId) return found.userId as UserId
+  }
+  return null
 }
 
 async function findOrCreateSession(userId: UserId, request: Request): Promise<string> {
@@ -105,7 +121,7 @@ export function verifyHS256JWT(token: string, secret: string): Record<string, un
 }
 
 interface IdentifiedUser {
-  id: string
+  externalId: string
   email: string
   name?: string
   avatarURL?: string
@@ -157,9 +173,19 @@ export const Route = createFileRoute('/api/widget/identify')({
             )
           }
 
+          const externalId = sub.trim()
+          const normalizedEmail = email.trim().toLowerCase()
+          if (!externalId || !normalizedEmail) {
+            return jsonError(
+              'TOKEN_INVALID',
+              'ssoToken must contain non-empty sub (or id) and email claims',
+              400
+            )
+          }
+
           identified = {
-            id: sub,
-            email,
+            externalId,
+            email: normalizedEmail,
             name: typeof payload.name === 'string' ? payload.name : undefined,
             avatarURL: typeof payload.avatarURL === 'string' ? payload.avatarURL : undefined,
           }
@@ -191,9 +217,15 @@ export const Route = createFileRoute('/api/widget/identify')({
             }
           }
 
+          const externalId = body.id.trim()
+          const normalizedEmail = body.email.trim().toLowerCase()
+          if (!externalId || !normalizedEmail) {
+            return jsonError('VALIDATION_ERROR', 'Provide non-empty id and email', 400)
+          }
+
           identified = {
-            id: body.id,
-            email: body.email,
+            externalId,
+            email: normalizedEmail,
             name: body.name,
             avatarURL: body.avatarURL,
           }
@@ -201,34 +233,29 @@ export const Route = createFileRoute('/api/widget/identify')({
           return jsonError('VALIDATION_ERROR', 'Provide ssoToken or (id + email)', 400)
         }
 
-        // Find or create user
-        let userRecord = await db.query.user.findFirst({
-          where: eq(user.email, identified.email),
-        })
+        const authHeader = request.headers.get('authorization') ?? ''
+        const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null
+        const ownedPreviousToken =
+          body.previousToken && bearerToken && bearerToken === body.previousToken
+            ? body.previousToken
+            : null
+        const sessionHintUserId = ownedPreviousToken
+          ? await findSessionUserIdFromToken(ownedPreviousToken)
+          : null
 
-        if (userRecord) {
-          const updates: Record<string, string> = {}
-          if (identified.name && identified.name !== userRecord.name) updates.name = identified.name
-          if (identified.avatarURL && identified.avatarURL !== userRecord.image)
-            updates.image = identified.avatarURL
-
-          if (Object.keys(updates).length > 0) {
-            await db.update(user).set(updates).where(eq(user.id, userRecord.id))
+        // Find or create user with externalId as primary identity key.
+        let userRecord: NonNullable<Awaited<ReturnType<typeof db.query.user.findFirst>>>
+        try {
+          userRecord = await upsertWidgetIdentifiedUser(identified, { sessionHintUserId })
+        } catch (error) {
+          if (error instanceof WidgetIdentifyExternalIdConflictError) {
+            return jsonError(
+              'IDENTITY_CONFLICT',
+              'Email is already linked to a different external identity',
+              409
+            )
           }
-        } else {
-          const [created] = await db
-            .insert(user)
-            .values({
-              id: generateId('user'),
-              name: identified.name || identified.email.split('@')[0],
-              email: identified.email,
-              emailVerified: false,
-              image: identified.avatarURL ?? null,
-              createdAt: new Date(),
-              updatedAt: new Date(),
-            })
-            .returning()
-          userRecord = created
+          throw error
         }
 
         const userId = userRecord.id as UserId
@@ -251,6 +278,24 @@ export const Route = createFileRoute('/api/widget/identify')({
             })
             .returning()
           principalRecord = created
+        } else {
+          // Keep principal profile in sync with the identified user profile.
+          // Public author names/avatars are resolved from principal, not user.
+          const principalUpdates: { displayName?: string; avatarUrl?: string | null } = {}
+          if (userRecord.name && userRecord.name !== principalRecord.displayName) {
+            principalUpdates.displayName = userRecord.name
+          }
+          const nextAvatarUrl = userRecord.image ?? null
+          if (nextAvatarUrl !== (principalRecord.avatarUrl ?? null)) {
+            principalUpdates.avatarUrl = nextAvatarUrl
+          }
+          if (Object.keys(principalUpdates).length > 0) {
+            await db
+              .update(principal)
+              .set(principalUpdates)
+              .where(eq(principal.id, principalRecord.id))
+            principalRecord = { ...principalRecord, ...principalUpdates }
+          }
         }
 
         const principalId = principalRecord.id as PrincipalId
@@ -258,16 +303,12 @@ export const Route = createFileRoute('/api/widget/identify')({
         // If the widget had a previous anonymous session, merge its activity.
         // Ownership check: the caller must send the previousToken as both a body
         // field AND the Authorization Bearer header to prove they own the session.
-        if (body.previousToken) {
-          const authHeader = request.headers.get('authorization') ?? ''
-          const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null
-          if (bearerToken && bearerToken === body.previousToken) {
-            await resolveAndMergeAnonymousToken({
-              previousToken: body.previousToken,
-              targetPrincipalId: principalId,
-              targetDisplayName: userRecord.name || 'User',
-            })
-          }
+        if (ownedPreviousToken) {
+          await resolveAndMergeAnonymousToken({
+            previousToken: ownedPreviousToken,
+            targetPrincipalId: principalId,
+            targetDisplayName: userRecord.name || 'User',
+          })
         }
 
         // Find/create session and fetch voted posts in parallel
