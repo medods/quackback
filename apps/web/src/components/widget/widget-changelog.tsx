@@ -3,9 +3,11 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { publicChangelogQueries } from '@/lib/client/queries/changelog'
 import { useInfiniteScroll } from '@/lib/client/hooks/use-infinite-scroll'
 import { NewspaperIcon } from '@heroicons/react/24/outline'
+import { getLanguage, t } from './i18n'
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-US', {
+  const locale = getLanguage() === 'ru' ? 'ru-RU' : 'en-US'
+  return new Date(iso).toLocaleDateString(locale, {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -46,7 +48,7 @@ export function WidgetChangelog({ onEntrySelect }: WidgetChangelogProps) {
   if (isLoading) {
     return (
       <div className="flex flex-col h-full items-center justify-center py-10">
-        <div className="text-sm text-muted-foreground">Loading changelog...</div>
+        <div className="text-sm text-muted-foreground">{t('changelog.loading')}</div>
       </div>
     )
   }
@@ -55,10 +57,8 @@ export function WidgetChangelog({ onEntrySelect }: WidgetChangelogProps) {
     return (
       <div className="flex flex-col h-full items-center justify-center py-10 text-center px-4">
         <NewspaperIcon className="w-8 h-8 text-muted-foreground/30 mb-2" />
-        <p className="text-sm font-medium text-muted-foreground/70">No updates yet</p>
-        <p className="text-xs text-muted-foreground/50 mt-0.5">
-          Check back soon for the latest product updates.
-        </p>
+        <p className="text-sm font-medium text-muted-foreground/70">{t('changelog.noEntries')}</p>
+        <p className="text-xs text-muted-foreground/50 mt-0.5">{t('changelog.checkBackSoon')}</p>
       </div>
     )
   }
@@ -92,7 +92,9 @@ export function WidgetChangelog({ onEntrySelect }: WidgetChangelogProps) {
         {hasNextPage && (
           <div ref={sentinelRef} className="flex justify-center py-2">
             {isFetchingNextPage && (
-              <span className="text-[10px] text-muted-foreground/50">Loading...</span>
+              <span className="text-[10px] text-muted-foreground/50">
+                {t('changelog.loadingMore')}
+              </span>
             )}
           </div>
         )}

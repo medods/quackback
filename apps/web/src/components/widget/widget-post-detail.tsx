@@ -15,6 +15,7 @@ import { WidgetCommentList } from './widget-comment-list'
 import { useWidgetAuth } from './widget-auth-provider'
 import { WidgetCommentForm } from './widget-comment-form'
 import { WidgetPortalTitle } from './widget-portal-title'
+import { t } from './i18n'
 import type { PostId } from '@quackback/ids'
 
 interface StatusInfo {
@@ -61,7 +62,7 @@ export function WidgetPostDetail({
         data: { postId },
         headers: getWidgetAuthHeaders(),
       })
-      if (!result) throw new Error('Post not found')
+      if (!result) throw new Error(t('postDetail.postNotFound'))
       return result as PublicPostDetailView
     },
     staleTime: 30 * 1000,
@@ -140,9 +141,9 @@ export function WidgetPostDetail({
   if (error || !post) {
     return (
       <div className="flex flex-col items-center justify-center h-full px-4 text-center">
-        <p className="text-sm text-muted-foreground">Could not load post</p>
+        <p className="text-sm text-muted-foreground">{t('postDetail.error')}</p>
         <p className="text-xs text-muted-foreground/60 mt-1">
-          {error instanceof Error ? error.message : 'Something went wrong'}
+          {error instanceof Error ? error.message : t('postDetail.somethingWentWrong')}
         </p>
       </div>
     )
@@ -185,7 +186,7 @@ export function WidgetPostDetail({
             </div>
             <WidgetPortalTitle title={post.title} onClick={handleViewOnPortal} />
             <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground/60 mt-1">
-              <span>{post.authorName || 'Anonymous'}</span>
+              <span>{post.authorName || t('postDetail.anonymous')}</span>
               <span className="text-muted-foreground/30">&middot;</span>
               <TimeAgo date={post.createdAt} />
               <span className="text-muted-foreground/30">&middot;</span>
@@ -209,12 +210,14 @@ export function WidgetPostDetail({
         {/* Pinned comment / official response */}
         {post.pinnedComment && (
           <div className="rounded-md border border-primary/20 bg-primary/[0.03] p-2.5">
-            <p className="text-[10px] font-medium text-primary mb-1">Official response</p>
+            <p className="text-[10px] font-medium text-primary mb-1">
+              {t('postDetail.officialResponse')}
+            </p>
             <p className="text-xs text-foreground/80 whitespace-pre-wrap leading-relaxed">
               {post.pinnedComment.content}
             </p>
             <p className="text-[10px] text-muted-foreground/60 mt-1">
-              — {post.pinnedComment.authorName || 'Team'}
+              — {post.pinnedComment.authorName || t('postDetail.team')}
             </p>
           </div>
         )}
@@ -224,7 +227,8 @@ export function WidgetPostDetail({
           <div className="flex items-center gap-1.5 mb-3">
             <ChatBubbleLeftIcon className="h-3.5 w-3.5 text-muted-foreground/50" />
             <span className="text-xs font-medium text-muted-foreground">
-              {liveCommentCount} {liveCommentCount === 1 ? 'comment' : 'comments'}
+              {liveCommentCount}{' '}
+              {liveCommentCount === 1 ? t('postDetail.comment') : t('postDetail.comments')}
             </span>
           </div>
 
@@ -244,13 +248,13 @@ export function WidgetPostDetail({
               onClick={handleViewOnPortal}
               className="text-[10px] text-primary hover:text-primary/80 transition-colors mb-3"
             >
-              Log in to join the conversation
+              {t('postDetail.loginToJoinConversation')}
             </button>
           )}
 
           {post.isCommentsLocked && (
             <p className="text-[10px] text-muted-foreground/50 mb-3">
-              Comments are locked on this post
+              {t('postDetail.commentsLocked')}
             </p>
           )}
 

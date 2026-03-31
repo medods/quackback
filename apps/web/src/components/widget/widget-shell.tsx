@@ -11,14 +11,9 @@ import { Avatar } from '@/components/ui/avatar'
 import { UserStatsBar } from '@/components/shared/user-stats'
 import { getWidgetAuthHeaders } from '@/lib/client/widget-auth'
 import { useWidgetAuth } from './widget-auth-provider'
+import { t } from './i18n'
 
 export type WidgetTab = 'feedback' | 'changelog' | 'help'
-
-const TAB_CONFIG: { tab: WidgetTab; icon: typeof LightBulbIcon; label: string }[] = [
-  { tab: 'feedback', icon: LightBulbIcon, label: 'Feedback' },
-  { tab: 'changelog', icon: NewspaperIcon, label: 'Changelog' },
-  { tab: 'help', icon: BookOpenIcon, label: 'Help' },
-]
 
 interface WidgetShellProps {
   orgSlug: string
@@ -43,6 +38,11 @@ export function WidgetShell({
   ).length
   const showTabBar = enabledCount > 1
   const { user, closeWidget } = useWidgetAuth()
+  const tabConfig: { tab: WidgetTab; icon: typeof LightBulbIcon; label: string }[] = [
+    { tab: 'feedback', icon: LightBulbIcon, label: t('shell.feedback') },
+    { tab: 'changelog', icon: NewspaperIcon, label: t('shell.changelog') },
+    { tab: 'help', icon: BookOpenIcon, label: t('shell.help') },
+  ]
 
   // Global Escape key handler — close widget from anywhere
   useEffect(() => {
@@ -64,17 +64,17 @@ export function WidgetShell({
               type="button"
               onClick={onBack}
               className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-muted transition-colors"
-              aria-label="Go back"
+              aria-label={t('shell.goBack')}
             >
               <ArrowLeftIcon className="w-4 h-4 text-muted-foreground" />
             </button>
           ) : (
             <h2 className="text-sm font-semibold text-foreground pl-0.5">
               {activeTab === 'feedback'
-                ? 'Share your ideas'
+                ? t('shell.shareIdeas')
                 : activeTab === 'help'
-                  ? 'Help Center'
-                  : "What's new"}
+                  ? t('shell.helpCenter')
+                  : t('shell.whatsNew')}
             </h2>
           )}
         </div>
@@ -85,7 +85,7 @@ export function WidgetShell({
               type="button"
               onClick={closeWidget}
               className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-muted transition-colors"
-              aria-label="Close feedback widget"
+              aria-label={t('shell.closeWidget')}
             >
               <XMarkIcon className="w-4 h-4 text-muted-foreground" />
             </button>
@@ -99,22 +99,24 @@ export function WidgetShell({
       <div className="border-t border-border/40 shrink-0">
         {showTabBar && (
           <div className="flex">
-            {TAB_CONFIG.filter(({ tab }) => enabledTabs[tab]).map(({ tab, icon: Icon, label }) => (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => onTabChange(tab)}
-                className={cn(
-                  'flex-1 flex flex-col items-center gap-0.5 py-2 transition-colors',
-                  activeTab === tab
-                    ? 'text-primary'
-                    : 'text-muted-foreground/60 hover:text-muted-foreground'
-                )}
-              >
-                <Icon className="w-5 h-5" />
-                <span className="text-xs font-medium">{label}</span>
-              </button>
-            ))}
+            {tabConfig
+              .filter(({ tab }) => enabledTabs[tab])
+              .map(({ tab, icon: Icon, label }) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => onTabChange(tab)}
+                  className={cn(
+                    'flex-1 flex flex-col items-center gap-0.5 py-2 transition-colors',
+                    activeTab === tab
+                      ? 'text-primary'
+                      : 'text-muted-foreground/60 hover:text-muted-foreground'
+                  )}
+                >
+                  <Icon className="w-5 h-5" />
+                  <span className="text-xs font-medium">{label}</span>
+                </button>
+              ))}
           </div>
         )}
       </div>
@@ -147,7 +149,7 @@ function UserAvatarPopover({
         type="button"
         onClick={() => setOpen(!open)}
         className="w-7 h-7 flex items-center justify-center rounded-full hover:ring-2 hover:ring-primary/20 transition-all"
-        aria-label="User menu"
+        aria-label={t('shell.userMenu')}
       >
         <Avatar src={user.avatarUrl} name={user.name} className="size-6 text-[10px]" />
       </button>

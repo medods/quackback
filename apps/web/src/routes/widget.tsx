@@ -1,19 +1,26 @@
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
-import { getRequestHeaders, setResponseHeader } from '@tanstack/react-start/server'
 import { generateThemeCSS, getGoogleFontsUrl } from '@/lib/shared/theme'
 import { WidgetAuthProvider } from '@/components/widget/widget-auth-provider'
+import { getLanguage, resolveLanguage, setLanguage } from '@/components/widget/i18n'
 import { extractSessionTokenFromCookie } from '@/lib/server/functions/portal-session-token'
 
 const setIframeHeaders = createServerFn({ method: 'GET' }).handler(async () => {
+  const { setResponseHeader } = await import('@tanstack/react-start/server')
   setResponseHeader('Content-Security-Policy', 'frame-ancestors *')
   setResponseHeader('X-Frame-Options', 'ALLOWALL')
 })
 
 /** Extract the signed session cookie for direct widget session reuse (same-origin only). */
 export const getPortalSessionToken = createServerFn({ method: 'GET' }).handler(async () => {
+  const { getRequestHeaders } = await import('@tanstack/react-start/server')
   const cookie = getRequestHeaders().get('cookie') ?? ''
   return extractSessionTokenFromCookie(cookie)
+})
+
+const getInitialLanguage = createServerFn({ method: 'GET' }).handler(async () => {
+  const { getRequestHeaders } = await import('@tanstack/react-start/server')
+  return resolveLanguage(getRequestHeaders().get('accept-language'))
 })
 
 export const Route = createFileRoute('/widget')({
@@ -55,6 +62,11 @@ export const Route = createFileRoute('/widget')({
     // HTML is safe: cross-origin parent pages cannot read iframe content.
     const portalSessionToken = session?.user ? await getPortalSessionToken() : null
 
+    const initialLanguage =
+      typeof window === 'undefined'
+        ? await getInitialLanguage()
+        : resolveLanguage(navigator.language)
+
     return {
       org,
       brandingData,
@@ -65,6 +77,7 @@ export const Route = createFileRoute('/widget')({
       portalUser,
       portalSessionToken,
       hmacRequired: settings?.publicWidgetConfig?.hmacRequired ?? false,
+      initialLanguage,
     }
   },
   head: () => ({ meta: [] }),
@@ -72,8 +85,19 @@ export const Route = createFileRoute('/widget')({
 })
 
 function WidgetLayout() {
-  const { themeStyles, customCss, googleFontsUrl, portalUser, portalSessionToken, hmacRequired } =
-    Route.useLoaderData()
+  const {
+    themeStyles,
+    customCss,
+    googleFontsUrl,
+    portalUser,
+    portalSessionToken,
+    hmacRequired,
+    initialLanguage,
+  } = Route.useLoaderData()
+
+  if (getLanguage() !== initialLanguage) {
+    setLanguage(initialLanguage)
+  }
 
   return (
     <WidgetAuthProvider
