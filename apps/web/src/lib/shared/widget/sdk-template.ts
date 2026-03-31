@@ -45,7 +45,6 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
   var config = null;
   var iframe = null;
   var trigger = null;
-  var backdrop = null;
   var panel = null;
   var isOpen = false;
   var isReady = false;
@@ -56,7 +55,6 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
   var iconClose = null;
   var listeners = {};
   var pendingOpen = null;
-  var isMobile = window.innerWidth < 640;
 
   // =========================================================================
   // Event System
@@ -210,55 +208,25 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
     var queryParts = [boardParam, closeParam].filter(Boolean);
     var iframeUrl = WIDGET_URL + (queryParts.length ? "?" + queryParts.join("&") : "");
 
-    // Backdrop (mobile only)
-    backdrop = createElement("div", {
-      position: "fixed",
-      inset: "0",
-      zIndex: "2147483646",
-      backgroundColor: "rgba(0,0,0,0.4)",
-      opacity: "0",
-      transition: "opacity 200ms ease",
-      display: "none",
-    });
-    backdrop.addEventListener("click", function() { dispatch("close"); });
-    document.body.appendChild(backdrop);
-
     // Panel container
-    if (isMobile) {
-      panel = createElement("div", {
-        position: "fixed",
-        bottom: "0",
-        left: "0",
-        right: "0",
-        zIndex: "2147483647",
-        height: "calc(100vh - 40px)",
-        borderRadius: "16px 16px 0 0",
-        overflow: "hidden",
-        boxShadow: "0 -8px 30px rgba(0,0,0,0.12)",
-        transform: "translateY(100%)",
-        transition: "transform 300ms cubic-bezier(0.4,0,0.2,1)",
-      }, {
-        className: "quackback-widget-iframe-wrapper",
-      });
-    } else {
-      panel = createElement("div", {
-        position: "fixed",
-        bottom: "88px",
-        [placement === "left" ? "left" : "right"]: "24px",
-        zIndex: "2147483647",
-        width: "400px",
-        height: "min(600px, calc(100vh - 108px))",
-        borderRadius: "12px",
-        overflow: "hidden",
-        boxShadow: "0 8px 30px rgba(0,0,0,0.12)",
-        display: "none",
-        opacity: "0",
-        transform: "scale(0)",
-        transformOrigin: placement === "left" ? "bottom left" : "bottom right",
-      }, {
-        className: "quackback-widget-iframe-wrapper",
-      });
-    }
+    panel = createElement("div", {
+      position: "fixed",
+      bottom: "88px",
+      [placement === "left" ? "left" : "right"]: "24px",
+      zIndex: "2147483647",
+      width: "400px",
+      height: "min(600px, calc(100vh - 108px))",
+      borderRadius: "12px",
+      overflow: "hidden",
+      boxShadow: "0 8px 30px rgba(0,0,0,0.12)",
+      display: "none",
+      opacity: "0",
+      transform: "scale(0)",
+      transformOrigin: placement === "left" ? "bottom left" : "bottom right",
+      
+    }, {
+      className: "quackback-widget-iframe-wrapper",
+    });
 
     // Iframe
     iframe = createElement("iframe", {
@@ -297,20 +265,12 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
       }
     }
 
-    if (isMobile) {
-      backdrop.style.display = "block";
-      // Force reflow
-      void backdrop.offsetHeight;
-      backdrop.style.opacity = "1";
-      panel.style.transform = "translateY(0)";
-    } else {
-      panel.style.display = "block";
-      // Force reflow so the browser commits opacity:0 / scale(0) before we transition
-      void panel.offsetHeight;
+    panel.style.display = "block";
+    // Force reflow so the browser commits opacity:0 / scale(0) before we transition
+    void panel.offsetHeight;
       panel.style.transition = "opacity 280ms cubic-bezier(0.34,1.56,0.64,1), transform 280ms cubic-bezier(0.34,1.56,0.64,1)";
-      panel.style.opacity = "1";
-      panel.style.transform = "scale(1)";
-    }
+    panel.style.opacity = "1";
+    panel.style.transform = "scale(1)";
 
     emit("open", {});
   }
@@ -333,16 +293,9 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
       }
     }
 
-    if (isMobile) {
-      backdrop.style.opacity = "0";
-      panel.style.transform = "translateY(100%)";
-      setTimeout(function() { backdrop.style.display = "none"; }, 200);
-    } else {
-      panel.style.transition = "opacity 200ms cubic-bezier(0.4,0,1,1), transform 200ms cubic-bezier(0.4,0,1,1)";
-      panel.style.opacity = "0";
-      panel.style.transform = "scale(0)";
-      setTimeout(function() { if (!isOpen && panel) panel.style.display = "none"; }, 200);
-    }
+    panel.style.opacity = "0";
+    panel.style.transform = "scale(0.95)";
+    setTimeout(function() { if (!isOpen && panel) panel.style.display = "none"; }, 200);
 
     emit("close", {});
   }
@@ -410,7 +363,6 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
     switch (command) {
       case "init":
         config = options || {};
-        isMobile = window.innerWidth < 640;
         break;
 
       case "identify":
@@ -487,12 +439,10 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
       case "destroy":
         hidePanel();
         if (panel && panel.parentNode) panel.parentNode.removeChild(panel);
-        if (backdrop && backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
         if (trigger && trigger.parentNode) trigger.parentNode.removeChild(trigger);
         panel = null;
         iframe = null;
         trigger = null;
-        backdrop = null;
         config = null;
         metadata = null;
         listeners = {};
@@ -520,9 +470,5 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
     dispatch(queue[i][0], queue[i][1], queue[i][2]);
   }
 
-  // Listen for responsive changes
-  window.addEventListener("resize", function() {
-    isMobile = window.innerWidth < 640;
-  });
 })();`
 }
