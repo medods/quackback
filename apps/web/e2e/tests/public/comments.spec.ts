@@ -45,20 +45,26 @@ test.describe('Public Comments', () => {
 
   test('comments show author name and timestamp', async ({ page }) => {
     // Check if there are any comments displayed
-    const comments = page.locator('[data-testid="comment"]')
+    const comments = page.locator('[id^="comment-"]')
     const commentCount = await comments.count()
 
     if (commentCount > 0) {
       // Has comments - check for author name and timestamp
+      const firstComment = comments.first()
+
       // Author name is in a span with font-medium class
-      const authorName = page.locator('span.font-medium.text-sm')
+      const authorName = firstComment.locator('span.font-medium.text-sm').first()
       await expect(authorName.first()).toBeVisible({ timeout: 5000 })
 
-      // Timestamps show relative time like "X days ago" or "about X months ago"
-      const timestamp = page.getByText(
-        /(\d+ (second|minute|hour|day|week|month|year)s? ago|about \d+ (second|minute|hour|day|week|month|year)s? ago)/
-      )
-      await expect(timestamp.first()).toBeVisible({ timeout: 5000 })
+      // Timestamp text is localized, so assert the timestamp element is visible
+      // and non-empty instead of matching English relative-time words.
+      const timestamp = firstComment
+        .locator('div.flex.items-center.gap-2')
+        .first()
+        .locator('span.text-xs.text-muted-foreground')
+        .last()
+      await expect(timestamp).toBeVisible({ timeout: 5000 })
+      await expect(timestamp).not.toHaveText('')
     }
   })
 })

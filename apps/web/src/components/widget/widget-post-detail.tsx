@@ -15,7 +15,7 @@ import { WidgetCommentList } from './widget-comment-list'
 import { useWidgetAuth } from './widget-auth-provider'
 import { WidgetCommentForm } from './widget-comment-form'
 import { WidgetPortalTitle } from './widget-portal-title'
-import { t } from './i18n'
+import { getLanguage, t } from './i18n'
 import type { PostId } from '@quackback/ids'
 
 interface StatusInfo {
@@ -188,7 +188,7 @@ export function WidgetPostDetail({
             <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground/60 mt-1">
               <span>{post.authorName || t('postDetail.anonymous')}</span>
               <span className="text-muted-foreground/30">&middot;</span>
-              <TimeAgo date={post.createdAt} />
+              <TimeAgo date={post.createdAt} locale={getLanguage()} />
               <span className="text-muted-foreground/30">&middot;</span>
               <span className="inline-flex items-center gap-0.5">
                 <Squares2X2Icon className="h-3 w-3 text-muted-foreground/40" />
