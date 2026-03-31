@@ -43,7 +43,7 @@ export function WidgetCommentList({
   if (comments.length === 0) {
     return (
       <p className="text-xs text-muted-foreground/60 text-center py-4">
-        No comments yet. Be the first to share your thoughts!
+        {t('postDetail.noCommentsCta')}
       </p>
     )
   }

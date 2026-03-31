@@ -233,7 +233,7 @@ export function WidgetPostDetail({
           </div>
 
           {/* Root comment form — unified: textarea + email (when anonymous) + single Post */}
-          {!post.isCommentsLocked && !hmacRequired && (
+          {!post.isCommentsLocked && (!hmacRequired || canComment) && (
             <WidgetCommentForm
               isIdentified={isIdentified}
               user={user}
