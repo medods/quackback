@@ -5,33 +5,33 @@
  * Usage: bun run db:seed
  */
 import { config } from 'dotenv'
-config({ path: '../../.env', quiet: true })
-
 import { drizzle } from 'drizzle-orm/postgres-js'
 import { eq } from 'drizzle-orm'
 import postgres from 'postgres'
-import { generateId } from '@quackback/ids'
 import type {
-  TagId,
   BoardId,
-  StatusId,
-  PrincipalId,
+  ChangelogId,
   PostId,
+  PrincipalId,
+  RawFeedbackItemId,
   RoadmapId,
+  StatusId,
+  TagId,
   UserId,
   WorkspaceId,
-  ChangelogId,
-  RawFeedbackItemId,
 } from '@quackback/ids'
-import { user, account, settings, principal } from './schema/auth'
-import { boards, tags, roadmaps } from './schema/boards'
-import { posts, postTags, postRoadmaps, votes, comments } from './schema/posts'
-import { postStatuses, DEFAULT_STATUSES } from './schema/statuses'
+import { generateId } from '@quackback/ids'
+import { account, principal, settings, user } from './schema/auth'
+import { boards, roadmaps, tags } from './schema/boards'
+import { comments, postRoadmaps, posts, postTags, votes } from './schema/posts'
+import { DEFAULT_STATUSES, postStatuses } from './schema/statuses'
 import { changelogEntries, changelogEntryPosts } from './schema/changelog'
-import { segments } from './schema/segments'
 import type { SegmentRules } from './schema/segments'
-import { feedbackSources, rawFeedbackItems, feedbackSignals } from './schema/feedback'
+import { segments } from './schema/segments'
+import { feedbackSignals, feedbackSources, rawFeedbackItems } from './schema/feedback'
 import type { RawFeedbackAuthor, RawFeedbackContent } from './types'
+
+config({ path: '../../.env', quiet: true })
 
 const connectionString = process.env.DATABASE_URL!
 const client = postgres(connectionString)
@@ -1138,7 +1138,7 @@ async function seed() {
   console.log('Demo account:')
   console.log(`  Email: ${DEMO_USER.email}`)
   console.log(`  Password: ${DEMO_USER.password}\n`)
-  console.log(`Portal: http://localhost:3000`)
+  console.log(`Portal: http://localhost:${process.env.PORT || 3000}`)
 
   await client.end()
 }

@@ -10,7 +10,7 @@ services:
       POSTGRES_PASSWORD: password
       POSTGRES_DB: quackback
     ports:
-      - '5432:5432'
+      - '${POSTGRES_PORT:-5432}:5432'
     volumes:
       - postgres_data:/var/lib/postgresql
       - ./docker/postgres/init-pgcron.sql:/docker-entrypoint-initdb.d/init-pgcron.sql
@@ -29,8 +29,8 @@ services:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
     ports:
-      - '9000:9000'
-      - '9001:9001'
+      - '${MINIO_PORT:-9000}:9000'
+      - '${MINIO_CONSOLE_PORT:-9001}:9001'
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
@@ -49,7 +49,7 @@ services:
     # See: https://www.dragonflydb.io/docs/integrations/bullmq
     command: dragonfly --cluster_mode=emulated --lock_on_hashtags
     ports:
-      - '6379:6379'
+      - '${REDIS_PORT:-6379}:6379'
     volumes:
       - dragonfly_data:/data
     ulimits:
