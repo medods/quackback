@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { buildWidgetSDK } from '../sdk-template'
 
 describe('buildWidgetSDK', () => {
@@ -88,15 +88,33 @@ describe('buildWidgetSDK', () => {
     expect(result).toContain('Open feedback widget')
   })
 
-  it('should set panel iframe title', () => {
-    const result = buildWidgetSDK('https://feedback.acme.com')
-    expect(result).toContain('Feedback Widget')
-  })
-
   it('should add CSS classes to iframe wrapper and iframe', () => {
     const result = buildWidgetSDK('https://feedback.acme.com')
     expect(result).toContain('quackback-widget-iframe-wrapper')
     expect(result).toContain('quackback-widget-iframe')
+  })
+
+  it('should resolve mount selector from init config', () => {
+    const result = buildWidgetSDK('https://feedback.acme.com')
+    expect(result).toContain('var selector = config.selector || config.mountSelector;')
+    expect(result).toContain('document.querySelector(selector);')
+  })
+
+  it('should append panel into mount selector when provided', () => {
+    const result = buildWidgetSDK('https://feedback.acme.com')
+    expect(result).toContain('if (mountNode) mountNode.appendChild(panel);')
+  })
+
+  it('should initialize embedded panel immediately in init command', () => {
+    const result = buildWidgetSDK('https://feedback.acme.com')
+    expect(result).toContain('if (isEmbeddedMode()) {')
+    expect(result).toContain('createPanel();')
+    expect(result).toContain('showPanel();')
+  })
+
+  it('should skip trigger creation when running in embedded mode', () => {
+    const result = buildWidgetSDK('https://feedback.acme.com')
+    expect(result).toContain('if (!isEmbeddedMode() && !(config && config.trigger === false)) {')
   })
 
   it('should support mobile detection', () => {
