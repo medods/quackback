@@ -238,6 +238,8 @@ export interface WidgetConfig {
     feedback?: boolean
     changelog?: boolean
   }
+  /** Whether to show the close button in the widget header */
+  showCloseButton?: boolean
 }
 
 /**
@@ -246,7 +248,7 @@ export interface WidgetConfig {
  */
 export type PublicWidgetConfig = Pick<
   WidgetConfig,
-  'enabled' | 'defaultBoard' | 'position' | 'tabs'
+  'enabled' | 'defaultBoard' | 'position' | 'tabs' | 'showCloseButton'
 > & {
   /** Whether HMAC verification is required (derived from identifyVerification) */
   hmacRequired?: boolean
@@ -259,6 +261,7 @@ export const DEFAULT_WIDGET_CONFIG: WidgetConfig = {
     feedback: true,
     changelog: false,
   },
+  showCloseButton: true,
 }
 
 /**
@@ -273,6 +276,7 @@ export interface UpdateWidgetConfigInput {
     feedback?: boolean
     changelog?: boolean
   }
+  showCloseButton?: boolean
 }
 
 // =============================================================================

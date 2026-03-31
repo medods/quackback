@@ -48,6 +48,7 @@ export async function getPublicWidgetConfig(): Promise<PublicWidgetConfig> {
       position: config.position,
       tabs: config.tabs,
       hmacRequired: config.identifyVerification ?? false,
+      showCloseButton: config.showCloseButton ?? true,
     }
   } catch (error) {
     console.error(`[domain:settings] getPublicWidgetConfig failed:`, error)

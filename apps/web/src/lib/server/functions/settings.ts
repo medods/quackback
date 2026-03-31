@@ -441,6 +441,7 @@ const updateWidgetConfigSchema = z.object({
       changelog: z.boolean().optional(),
     })
     .optional(),
+  showCloseButton: z.boolean().optional(),
 })
 
 export const updateWidgetConfigFn = createServerFn({ method: 'POST' })

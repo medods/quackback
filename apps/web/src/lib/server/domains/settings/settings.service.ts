@@ -306,6 +306,7 @@ export async function getTenantSettings(): Promise<TenantSettings | null> {
         position: widgetConfig.position,
         tabs: widgetConfig.tabs,
         hmacRequired: widgetConfig.identifyVerification ?? false,
+        showCloseButton: widgetConfig.showCloseButton ?? true,
       },
       featureFlags,
       brandingData,

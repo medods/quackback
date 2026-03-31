@@ -21,6 +21,10 @@ describe('Widget Config Types', () => {
       expect(DEFAULT_WIDGET_CONFIG.defaultBoard).toBeUndefined()
       expect(DEFAULT_WIDGET_CONFIG.position).toBeUndefined()
     })
+
+    it('should have showCloseButton set to true', () => {
+      expect(DEFAULT_WIDGET_CONFIG.showCloseButton).toBe(true)
+    })
   })
 
   describe('WidgetConfig type constraints', () => {
@@ -30,9 +34,11 @@ describe('Widget Config Types', () => {
         defaultBoard: 'feature-requests',
         position: 'bottom-right',
         identifyVerification: true,
+        showCloseButton: true,
       }
       expect(config.enabled).toBe(true)
       expect(config.position).toBe('bottom-right')
+      expect(config.showCloseButton).toBe(true)
     })
 
     it('should accept minimal config', () => {
@@ -66,8 +72,10 @@ describe('Widget Config Types', () => {
         defaultBoard: 'bugs',
         position: 'bottom-left',
         identifyVerification: true,
+        showCloseButton: false,
       }
       expect(update.position).toBe('bottom-left')
+      expect(update.showCloseButton).toBe(false)
     })
   })
 
@@ -81,6 +89,14 @@ describe('Widget Config Types', () => {
       expect(publicConfig.enabled).toBe(true)
       // identifyVerification is NOT in PublicWidgetConfig (type-level check)
       expect('identifyVerification' in publicConfig).toBe(false)
+    })
+
+    it('should accept showCloseButton field', () => {
+      const publicConfig: PublicWidgetConfig = {
+        enabled: true,
+        showCloseButton: false,
+      }
+      expect(publicConfig.showCloseButton).toBe(false)
     })
   })
 })
