@@ -45,7 +45,6 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
   var config = null;
   var iframe = null;
   var trigger = null;
-  var backdrop = null;
   var panel = null;
   var isOpen = false;
   var isReady = false;
@@ -56,7 +55,6 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
   var iconClose = null;
   var listeners = {};
   var pendingOpen = null;
-  var isMobile = window.innerWidth < 640;
 
   // =========================================================================
   // Event System
@@ -207,54 +205,28 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
     var placement = (config && config.placement) || "right";
     var boardParam = config && config.defaultBoard ? "board=" + encodeURIComponent(config.defaultBoard) : "";
     var closeParam = config && config.trigger === false ? "showClose=1" : "";
-    var localeParam = config && config.locale ? "locale=" + encodeURIComponent(config.locale) : "";
-    var queryParts = [boardParam, closeParam, localeParam].filter(Boolean);
+    var queryParts = [boardParam, closeParam].filter(Boolean);
     var iframeUrl = WIDGET_URL + (queryParts.length ? "?" + queryParts.join("&") : "");
-    var side = placement === "left" ? "left" : "right";
 
-    // Inject responsive styles once
-    if (!document.getElementById("quackback-widget-styles")) {
-      var styleEl = document.createElement("style");
-      styleEl.id = "quackback-widget-styles";
-      styleEl.textContent = [
-        // Desktop: popover anchored to trigger button
-        ".quackback-panel{position:fixed;z-index:2147483647;overflow:hidden;pointer-events:none;",
-        "bottom:88px;" + side + ":24px;width:400px;height:min(600px,calc(100vh - 108px));",
-        "border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.12);",
-        "opacity:0;transform:scale(0);transform-origin:bottom " + side + ";",
-        "transition:opacity 280ms cubic-bezier(0.34,1.56,0.64,1),transform 280ms cubic-bezier(0.34,1.56,0.64,1)}",
-        // Desktop open state
-        ".quackback-panel.quackback-open{opacity:1;transform:scale(1);pointer-events:auto}",
-        // Desktop close transition (applied briefly)
-        ".quackback-panel.quackback-closing{opacity:0;transform:scale(0);pointer-events:none;",
-        "transition:opacity 200ms cubic-bezier(0.4,0,1,1),transform 200ms cubic-bezier(0.4,0,1,1)}",
-        // Mobile: full-screen overlay
-        "@media(max-width:639px){",
-        ".quackback-panel{top:0;left:0;right:0;bottom:0;width:100%;height:100vh;",
-        "border-radius:0;box-shadow:none;",
-        "opacity:1;transform:translateY(100%);transform-origin:center;",
-        "transition:transform 300ms cubic-bezier(0.4,0,0.2,1)}",
-        ".quackback-panel.quackback-open{transform:translateY(0)}",
-        ".quackback-panel.quackback-closing{transform:translateY(100%);transition:transform 200ms cubic-bezier(0.4,0,1,1)}}",
-        // Backdrop
-        ".quackback-backdrop{position:fixed;inset:0;z-index:2147483646;background:rgba(0,0,0,0.4);",
-        "opacity:0;pointer-events:none;transition:opacity 200ms ease}",
-        ".quackback-backdrop.quackback-open{opacity:1;pointer-events:auto}",
-        "@media(min-width:640px){.quackback-backdrop{display:none!important}}",
-      ].join("");
-      document.head.appendChild(styleEl);
-    }
-
-    // Backdrop
-    backdrop = document.createElement("div");
-    backdrop.className = "quackback-backdrop";
-    backdrop.addEventListener("click", function() { dispatch("close"); });
-    document.body.appendChild(backdrop);
-
-    // Panel
-    panel = document.createElement("div");
-    panel.className = "quackback-panel quackback-widget-iframe-wrapper";
-    document.body.appendChild(panel);
+    // Panel container
+    panel = createElement("div", {
+      position: "fixed",
+      bottom: "88px",
+      [placement === "left" ? "left" : "right"]: "24px",
+      zIndex: "2147483647",
+      width: "400px",
+      height: "min(600px, calc(100vh - 108px))",
+      borderRadius: "12px",
+      overflow: "hidden",
+      boxShadow: "0 8px 30px rgba(0,0,0,0.12)",
+      display: "none",
+      opacity: "0",
+      transform: "scale(0)",
+      transformOrigin: placement === "left" ? "bottom left" : "bottom right",
+      
+    }, {
+      className: "quackback-widget-iframe-wrapper",
+    });
 
     // Iframe
     iframe = createElement("iframe", {
@@ -265,19 +237,18 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
     }, {
       src: iframeUrl,
       title: "Feedback Widget",
-      sandbox: "allow-scripts allow-forms allow-same-origin allow-popups allow-downloads",
-      allow: "clipboard-write",
+      sandbox: "allow-scripts allow-forms allow-same-origin allow-popups",
       className: "quackback-widget-iframe",
     });
 
     panel.appendChild(iframe);
+    document.body.appendChild(panel);
   }
 
   function showPanel() {
     if (!panel) createPanel();
     if (isOpen) return;
     isOpen = true;
-    isMobile = window.innerWidth < 640;
 
     if (trigger) {
       trigger.setAttribute("aria-expanded", "true");
@@ -294,12 +265,12 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
       }
     }
 
-    panel.classList.remove("quackback-closing");
-    if (backdrop) backdrop.classList.remove("quackback-closing");
-    // Force reflow so the browser registers the base state before transitioning
+    panel.style.display = "block";
+    // Force reflow so the browser commits opacity:0 / scale(0) before we transition
     void panel.offsetHeight;
-    panel.classList.add("quackback-open");
-    if (backdrop) backdrop.classList.add("quackback-open");
+      panel.style.transition = "opacity 280ms cubic-bezier(0.34,1.56,0.64,1), transform 280ms cubic-bezier(0.34,1.56,0.64,1)";
+    panel.style.opacity = "1";
+    panel.style.transform = "scale(1)";
 
     emit("open", {});
   }
@@ -307,11 +278,10 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
   function hidePanel() {
     if (!isOpen) return;
     isOpen = false;
-    isMobile = window.innerWidth < 640;
 
     if (trigger && isIdentified && !(config && config.trigger === false)) {
       trigger.setAttribute("aria-expanded", "false");
-      trigger.style.display = "flex";
+      trigger.style.display = "flex"; // Always restore — handles mobile→desktop resize edge case
       if (!isMobile) {
         trigger.setAttribute("aria-label", "Open feedback widget");
         if (iconChat && iconClose) {
@@ -323,16 +293,9 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
       }
     }
 
-    panel.classList.remove("quackback-open");
-    panel.classList.add("quackback-closing");
-    if (backdrop) {
-      backdrop.classList.remove("quackback-open");
-      backdrop.classList.add("quackback-closing");
-    }
-    setTimeout(function() {
-      if (!isOpen && panel) panel.classList.remove("quackback-closing");
-      if (!isOpen && backdrop) backdrop.classList.remove("quackback-closing");
-    }, 300);
+    panel.style.opacity = "0";
+    panel.style.transform = "scale(0.95)";
+    setTimeout(function() { if (!isOpen && panel) panel.style.display = "none"; }, 200);
 
     emit("close", {});
   }
@@ -356,14 +319,11 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
     switch (msg.type) {
       case "quackback:ready":
         isReady = true;
-        // Tell the widget whether the parent viewport is mobile-sized
-        sendToWidget("quackback:mobile", isMobile);
         // Replay any pending identify
         if (pendingIdentify !== null) {
           sendToWidget("quackback:identify", pendingIdentify);
           pendingIdentify = null;
         }
-        if (config && config.locale) sendToWidget("quackback:locale", config.locale);
         if (metadata) sendToWidget("quackback:metadata", metadata);
         if (pendingOpen) {
           sendToWidget("quackback:open", pendingOpen);
@@ -403,7 +363,6 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
     switch (command) {
       case "init":
         config = options || {};
-        isMobile = window.innerWidth < 640;
         break;
 
       case "identify":
@@ -480,14 +439,10 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
       case "destroy":
         hidePanel();
         if (panel && panel.parentNode) panel.parentNode.removeChild(panel);
-        if (backdrop && backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
         if (trigger && trigger.parentNode) trigger.parentNode.removeChild(trigger);
-        var styleTag = document.getElementById("quackback-widget-styles");
-        if (styleTag && styleTag.parentNode) styleTag.parentNode.removeChild(styleTag);
         panel = null;
         iframe = null;
         trigger = null;
-        backdrop = null;
         config = null;
         metadata = null;
         listeners = {};
@@ -515,29 +470,5 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
     dispatch(queue[i][0], queue[i][1], queue[i][2]);
   }
 
-  // Keep isMobile in sync and notify the widget iframe on change
-  window.addEventListener("resize", function() {
-    var wasMobile = isMobile;
-    isMobile = window.innerWidth < 640;
-    if (wasMobile !== isMobile) {
-      // Notify widget so it can show/hide the close button
-      if (isReady) sendToWidget("quackback:mobile", isMobile);
-      // Show/hide trigger when crossing the breakpoint while panel is open
-      if (isOpen && trigger) {
-        if (isMobile) {
-          trigger.style.display = "none";
-        } else {
-          trigger.style.display = "flex";
-          trigger.setAttribute("aria-label", "Close feedback widget");
-          if (iconChat && iconClose) {
-            iconChat.style.opacity = "0";
-            iconChat.style.transform = "rotate(90deg)";
-            iconClose.style.opacity = "1";
-            iconClose.style.transform = "rotate(0deg)";
-          }
-        }
-      }
-    }
-  });
 })();`
 }
