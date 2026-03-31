@@ -85,7 +85,11 @@ async function reset() {
   await Bun.sleep(2000)
 
   // Clear any other containers occupying our ports
-  for (const port of [5432, 9000, 9001, 6379]) {
+  const postgresPort = parseInt(process.env.POSTGRES_PORT ?? '5432', 10)
+  const minioPort = parseInt(process.env.MINIO_PORT ?? '9000', 10)
+  const minioConsolePort = parseInt(process.env.MINIO_CONSOLE_PORT ?? '9001', 10)
+  const redisPort = parseInt(process.env.REDIS_PORT ?? '6379', 10)
+  for (const port of [postgresPort, minioPort, minioConsolePort, redisPort]) {
     const result = await $`docker ps --format '{{.ID}} {{.Names}}' --filter publish=${port}`
       .quiet()
       .nothrow()
