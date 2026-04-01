@@ -19,6 +19,17 @@ import { boardKeys } from '@/lib/client/hooks/use-boards-query'
 import { adminQueries } from '@/lib/client/queries/admin'
 import { slugify } from '@/lib/shared/utils'
 
+const adminBoardListQueryKey = ['admin', 'boards'] as const
+const adminBoardsForSettingsQueryKey = ['admin', 'settings', 'boards'] as const
+
+interface BoardForSettingsCacheItem {
+  id: string
+  name: string
+  slug: string
+  description: string | null
+  isPublic: boolean
+}
+
 // ============================================================================
 // Mutation Hooks
 // ============================================================================
@@ -52,6 +63,25 @@ export function useCreateBoard() {
 
       return { previous }
     },
+    onSuccess: (createdBoard) => {
+      queryClient.setQueryData<BoardForSettingsCacheItem[]>(
+        adminBoardsForSettingsQueryKey,
+        (old) => {
+          const board = {
+            id: createdBoard.id,
+            name: createdBoard.name,
+            slug: createdBoard.slug,
+            description: createdBoard.description ?? null,
+            isPublic: createdBoard.isPublic,
+          }
+          if (!old) return [board]
+          if (old.some((existing) => existing.id === createdBoard.id)) {
+            return old.map((existing) => (existing.id === createdBoard.id ? board : existing))
+          }
+          return [...old, board]
+        }
+      )
+    },
     onError: (_err, _input, context) => {
       if (context?.previous) {
         queryClient.setQueryData(boardKeys.lists(), context.previous)
@@ -60,6 +90,8 @@ export function useCreateBoard() {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: boardKeys.lists() })
       queryClient.invalidateQueries({ queryKey: adminQueries.boardsForSettings().queryKey })
+      queryClient.invalidateQueries({ queryKey: adminBoardListQueryKey })
+      queryClient.invalidateQueries({ queryKey: adminBoardsForSettingsQueryKey })
     },
   })
 }
@@ -107,7 +139,33 @@ export function useUpdateBoard() {
         })
       }
 
+      queryClient.setQueryData<BoardForSettingsCacheItem[]>(adminBoardsForSettingsQueryKey, (old) =>
+        old?.map((board) => {
+          if (board.id !== input.id) return board
+          return {
+            ...board,
+            ...(input.name !== undefined && { name: input.name }),
+            ...(input.description !== undefined && { description: input.description }),
+            ...(input.isPublic !== undefined && { isPublic: input.isPublic }),
+          }
+        })
+      )
+
       return { previousList, previousDetail }
+    },
+    onSuccess: (updatedBoard) => {
+      queryClient.setQueryData<BoardForSettingsCacheItem[]>(adminBoardsForSettingsQueryKey, (old) =>
+        old?.map((board) => {
+          if (board.id !== updatedBoard.id) return board
+          return {
+            ...board,
+            name: updatedBoard.name,
+            slug: updatedBoard.slug,
+            description: updatedBoard.description ?? null,
+            isPublic: updatedBoard.isPublic,
+          }
+        })
+      )
     },
     onError: (_err, input, context) => {
       if (context?.previousList) {
@@ -121,6 +179,8 @@ export function useUpdateBoard() {
       queryClient.invalidateQueries({ queryKey: boardKeys.lists() })
       queryClient.invalidateQueries({ queryKey: boardKeys.detail(input.id as BoardId) })
       queryClient.invalidateQueries({ queryKey: adminQueries.boardsForSettings().queryKey })
+      queryClient.invalidateQueries({ queryKey: adminBoardListQueryKey })
+      queryClient.invalidateQueries({ queryKey: adminBoardsForSettingsQueryKey })
     },
   })
 }
@@ -142,6 +202,9 @@ export function useDeleteBoard() {
         old?.filter((board) => board.id !== input.id)
       )
       queryClient.removeQueries({ queryKey: boardKeys.detail(input.id as BoardId) })
+      queryClient.setQueryData<BoardForSettingsCacheItem[]>(adminBoardsForSettingsQueryKey, (old) =>
+        old?.filter((board) => board.id !== input.id)
+      )
 
       return { previous }
     },
@@ -152,6 +215,8 @@ export function useDeleteBoard() {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: boardKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: adminBoardListQueryKey })
+      queryClient.invalidateQueries({ queryKey: adminBoardsForSettingsQueryKey })
       queryClient.invalidateQueries({ queryKey: adminQueries.boardsForSettings().queryKey })
     },
   })

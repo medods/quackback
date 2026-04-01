@@ -48,7 +48,7 @@ export const Route = createFileRoute('/admin/settings/boards/')({
 })
 
 function BoardsSettingsPage() {
-  const { data: boards } = useSuspenseQuery(adminQueries.boardsForSettings())
+  const { data: boards, isFetching } = useSuspenseQuery(adminQueries.boardsForSettings())
   const { selectedBoardSlug, selectedTab, setSelectedBoard } = useBoardSelection()
 
   // Auto-select first board if none selected
@@ -61,10 +61,10 @@ function BoardsSettingsPage() {
     }
 
     const boardExists = boards.some((board) => board.slug === selectedBoardSlug)
-    if (!boardExists) {
+    if (!boardExists && !isFetching) {
       setSelectedBoard(boards[0].slug)
     }
-  }, [boards, selectedBoardSlug, setSelectedBoard])
+  }, [boards, selectedBoardSlug, isFetching, setSelectedBoard])
 
   const currentBoard = boards.find((b) => b.slug === selectedBoardSlug)
 
