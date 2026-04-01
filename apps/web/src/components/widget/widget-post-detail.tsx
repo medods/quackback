@@ -201,7 +201,7 @@ export function WidgetPostDetail({
                 </span>
               )}
             </div>
-            <WidgetPortalTitle title={post.title} onClick={handleViewOnPortal} />
+            <WidgetPortalTitle title={post.title} onClick={handleViewOnPortal} hideLink={true} />
             <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground/60 mt-1">
               <span>
                 {post.authorName ||
