@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { Locale } from 'date-fns'
-import { formatDistanceToNow } from 'date-fns'
+import { format, formatDistanceToNow } from 'date-fns'
 import { enUS, ru } from 'date-fns/locale'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
@@ -33,10 +33,7 @@ function getAbsoluteDate(date: Date | string | null | undefined): string {
   const d = typeof date === 'string' ? new Date(date) : date
   if (isNaN(d.getTime())) return ''
 
-  const day = String(d.getDate()).padStart(2, '0')
-  const month = String(d.getMonth() + 1).padStart(2, '0')
-  const year = String(d.getFullYear())
-  return `${day}.${month}.${year}`
+  return format(d, 'dd.MM.yyyy HH:mm')
 }
 
 export function TimeAgo({ date, className, locale = 'en' }: TimeAgoProps) {

@@ -1,13 +1,12 @@
 import { useCallback, useEffect, useMemo, memo, useRef, useState } from 'react'
-import { Squares2X2Icon, PencilIcon } from '@heroicons/react/24/solid'
+import { PencilIcon, Squares2X2Icon } from '@heroicons/react/24/solid'
 import {
-  LightBulbIcon,
-  MagnifyingGlassIcon,
-  XMarkIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  LightBulbIcon,
+  MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline'
-import { motion, AnimatePresence } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { useIntl, FormattedMessage } from 'react-intl'
 import {
@@ -22,6 +21,7 @@ import { useInfiniteScroll } from '@/lib/client/hooks/use-infinite-scroll'
 import { WidgetVoteButton } from './widget-vote-button'
 import { useWidgetAuth } from './widget-auth-provider'
 import { sendToHost } from '@/lib/client/widget-bridge'
+import { t } from './i18n'
 import type { PostId } from '@quackback/ids'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { useWidgetImageUpload } from '@/lib/client/hooks/use-image-upload'
@@ -245,7 +245,7 @@ export function WidgetHome({
   const [popularSearch, setPopularSearch] = useState('')
   const [debouncedPopularSearch, setDebouncedPopularSearch] = useState('')
   const popularSearchDebounceRef = useRef<ReturnType<typeof setTimeout>>(null)
-  const [popularSearchOpen, setPopularSearchOpen] = useState(false)
+  const [popularSearchOpen] = useState(false)
   const popularSearchInputRef = useRef<HTMLInputElement>(null)
 
   const statusMap = useMemo(() => new Map(statuses.map((s) => [s.id, s])), [statuses])
@@ -405,12 +405,7 @@ export function WidgetHome({
       if (needsEmail) {
         const identified = await identifyWithEmail(email.trim(), name.trim() || undefined)
         if (!identified) {
-          setError(
-            intl.formatMessage({
-              id: 'widget.home.form.errorEmail',
-              defaultMessage: 'Could not verify your email. Please try again.',
-            })
-          )
+          setError(t('home.errorEmail'))
           setIsSubmitting(false)
           return
         }
@@ -423,12 +418,7 @@ export function WidgetHome({
       } else if (!isIdentified) {
         const ok = await ensureSession()
         if (!ok) {
-          setError(
-            intl.formatMessage({
-              id: 'widget.home.form.errorSession',
-              defaultMessage: 'Could not create session. Please try again.',
-            })
-          )
+          setError(t('home.errorSession'))
           setIsSubmitting(false)
           return
         }
@@ -466,12 +456,7 @@ export function WidgetHome({
 
       collapseForm()
     } catch {
-      setError(
-        intl.formatMessage({
-          id: 'widget.home.form.errorNetwork',
-          defaultMessage: 'Network error. Please try again.',
-        })
-      )
+      setError(t('home.errorNetwork'))
     } finally {
       setIsSubmitting(false)
     }
@@ -503,11 +488,8 @@ export function WidgetHome({
                   className="overflow-hidden"
                 >
                   <div className="flex items-center px-3 pt-2.5 pb-0.5">
-                    <span className="text-[11px] text-muted-foreground me-1">
-                      <FormattedMessage
-                        id="widget.home.posting.postingTo"
-                        defaultMessage="Posting to"
-                      />
+                    <span className="text-[11px] text-muted-foreground mr-1">
+                      {t('home.postingTo')}
                     </span>
                     <Select value={selectedBoardId} onValueChange={setSelectedBoardId}>
                       <SelectTrigger
@@ -547,10 +529,7 @@ export function WidgetHome({
               <motion.input
                 ref={inputRef}
                 type="text"
-                placeholder={intl.formatMessage({
-                  id: 'widget.home.input.placeholder',
-                  defaultMessage: "What's your idea?",
-                })}
+                placeholder={t('home.ideaPlaceholder')}
                 value={title}
                 onChange={(e) => {
                   const val = e.target.value
@@ -626,10 +605,7 @@ export function WidgetHome({
                           <div className="px-3 pb-2">
                             <p className="text-[10px] font-medium text-muted-foreground/60 flex items-center gap-1 mb-1.5">
                               <LightBulbIcon className="w-3 h-3" />
-                              <FormattedMessage
-                                id="widget.home.similar.heading"
-                                defaultMessage="Similar ideas"
-                              />
+                              {t('home.similarIdeas')}
                             </p>
                             <div className="space-y-0.5">
                               {similarPostResults.posts.slice(0, 3).map((post) => (
@@ -669,20 +645,14 @@ export function WidgetHome({
                         <input
                           type="email"
                           required
-                          placeholder={intl.formatMessage({
-                            id: 'widget.home.form.emailPlaceholder',
-                            defaultMessage: 'Your email',
-                          })}
+                          placeholder={t('home.yourEmail')}
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           className={`flex-1 min-w-0 ${identityInputCls}`}
                         />
                         <input
                           type="text"
-                          placeholder={intl.formatMessage({
-                            id: 'widget.home.form.namePlaceholder',
-                            defaultMessage: 'Name (optional)',
-                          })}
+                          placeholder={t('home.nameOptional')}
                           value={name}
                           onChange={(e) => setName(e.target.value)}
                           className={`w-28 shrink-0 ${identityInputCls}`}
@@ -692,41 +662,23 @@ export function WidgetHome({
                     <div className="flex items-center justify-between px-3 py-2">
                       <p className="text-[11px] text-muted-foreground truncate me-2">
                         {user ? (
-                          <FormattedMessage
-                            id="widget.home.posting.postingAs"
-                            defaultMessage="Posting as {name}"
-                            values={{
-                              name: (
-                                <span className="font-medium text-foreground">
-                                  {user.name || user.email}
-                                </span>
-                              ),
-                            }}
-                          />
+                          <>
+                            {t('home.postingAs')}{' '}
+                            <span className="font-medium text-foreground">
+                              {user.name || user.email}
+                            </span>
+                          </>
                         ) : needsEmail ? (
                           email.trim() ? (
-                            <FormattedMessage
-                              id="widget.home.posting.postingAs"
-                              defaultMessage="Posting as {name}"
-                              values={{
-                                name: (
-                                  <span className="font-medium text-foreground">
-                                    {email.trim()}
-                                  </span>
-                                ),
-                              }}
-                            />
+                            <>
+                              {t('home.postingAs')}{' '}
+                              <span className="font-medium text-foreground">{email.trim()}</span>
+                            </>
                           ) : (
-                            <FormattedMessage
-                              id="widget.home.posting.emailRequired"
-                              defaultMessage="Your email is required"
-                            />
+                            t('home.emailRequired')
                           )
                         ) : (
-                          <FormattedMessage
-                            id="widget.home.posting.postingAnonymously"
-                            defaultMessage="Posting anonymously"
-                          />
+                          t('home.postingAnonymously')
                         )}
                       </p>
                       <div className="flex items-center gap-1.5">
@@ -735,24 +687,14 @@ export function WidgetHome({
                           onClick={collapseForm}
                           className="px-2.5 py-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
                         >
-                          <FormattedMessage id="widget.home.form.cancel" defaultMessage="Cancel" />
+                          {t('home.cancel')}
                         </button>
                         <button
                           type="submit"
                           disabled={!canSubmitForm || isSubmitting}
                           className="px-3 py-1 text-[11px] font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
                         >
-                          {isSubmitting ? (
-                            <FormattedMessage
-                              id="widget.home.form.submitting"
-                              defaultMessage="Submitting..."
-                            />
-                          ) : (
-                            <FormattedMessage
-                              id="widget.home.form.submit"
-                              defaultMessage="Submit"
-                            />
-                          )}
+                          {isSubmitting ? t('home.submitting') : t('home.submit')}
                         </button>
                       </div>
                     </div>
@@ -764,55 +706,6 @@ export function WidgetHome({
 
           {/* Popular ideas */}
           <div className="mt-2">
-            <div className="flex items-center justify-between px-1 h-7">
-              {popularSearchOpen ? (
-                <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                  <MagnifyingGlassIcon className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
-                  <input
-                    ref={popularSearchInputRef}
-                    type="text"
-                    value={popularSearch}
-                    onChange={(e) => setPopularSearch(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') e.preventDefault()
-                    }}
-                    placeholder={intl.formatMessage({
-                      id: 'widget.home.popular.search.placeholder',
-                      defaultMessage: 'Search ideas...',
-                    })}
-                    className="flex-1 min-w-0 h-5 bg-transparent text-xs text-foreground placeholder:text-muted-foreground/50 outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setPopularSearchOpen(false)}
-                    className="shrink-0 text-muted-foreground/60 hover:text-foreground transition-colors"
-                  >
-                    <XMarkIcon className="w-3 h-3" />
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <p className="text-[11px] font-medium text-muted-foreground/60 uppercase tracking-wide">
-                    <FormattedMessage
-                      id="widget.home.popular.heading"
-                      defaultMessage="Popular ideas"
-                    />
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setPopularSearchOpen(true)}
-                    className="text-muted-foreground/40 hover:text-muted-foreground transition-colors"
-                    aria-label={intl.formatMessage({
-                      id: 'widget.home.popular.search.aria',
-                      defaultMessage: 'Search ideas',
-                    })}
-                  >
-                    <MagnifyingGlassIcon className="w-3.5 h-3.5" />
-                  </button>
-                </>
-              )}
-            </div>
-
             {boards.length >= 2 && (
               <div className="relative mb-2">
                 <div
@@ -840,11 +733,8 @@ export function WidgetHome({
                   <button
                     type="button"
                     onClick={() => pills.scrollBy(-120)}
-                    className="absolute start-0 top-0 bottom-0.5 flex items-center ps-0.5 pe-6 bg-gradient-to-r from-background via-background/80 to-transparent"
-                    aria-label={intl.formatMessage({
-                      id: 'widget.home.scroll.ariaLeft',
-                      defaultMessage: 'Scroll left',
-                    })}
+                    className="absolute left-0 top-0 bottom-0.5 flex items-center pl-0.5 pr-6 bg-gradient-to-r from-background via-background/80 to-transparent"
+                    aria-label={t('home.scrollLeft')}
                   >
                     <ChevronLeftIcon className="w-3 h-3 text-muted-foreground" />
                   </button>
@@ -853,11 +743,8 @@ export function WidgetHome({
                   <button
                     type="button"
                     onClick={() => pills.scrollBy(120)}
-                    className="absolute end-0 top-0 bottom-0.5 flex items-center pe-0.5 ps-6 bg-gradient-to-l from-background via-background/80 to-transparent"
-                    aria-label={intl.formatMessage({
-                      id: 'widget.home.scroll.ariaRight',
-                      defaultMessage: 'Scroll right',
-                    })}
+                    className="absolute right-0 top-0 bottom-0.5 flex items-center pr-0.5 pl-6 bg-gradient-to-l from-background via-background/80 to-transparent"
+                    aria-label={t('home.scrollRight')}
                   >
                     <ChevronRightIcon className="w-3 h-3 text-muted-foreground" />
                   </button>
@@ -870,10 +757,7 @@ export function WidgetHome({
                 {(isPopularSearchFetching || popularSearch !== debouncedPopularSearch) && (
                   <div className="flex justify-center py-4">
                     <span className="text-[10px] text-muted-foreground/50">
-                      <FormattedMessage
-                        id="widget.home.popular.search.searching"
-                        defaultMessage="Searching..."
-                      />
+                      {t('home.searching')}
                     </span>
                   </div>
                 )}
@@ -883,16 +767,10 @@ export function WidgetHome({
                     <div className="flex flex-col items-center justify-center py-8 text-center">
                       <MagnifyingGlassIcon className="w-8 h-8 text-muted-foreground/30 mb-2" />
                       <p className="text-sm font-medium text-muted-foreground/70">
-                        <FormattedMessage
-                          id="widget.home.popular.search.noResults"
-                          defaultMessage="No ideas found"
-                        />
+                        {t('home.noIdeasFound')}
                       </p>
                       <p className="text-xs text-muted-foreground/50 mt-0.5">
-                        <FormattedMessage
-                          id="widget.home.popular.search.noResultsHint"
-                          defaultMessage="Try a different search term"
-                        />
+                        {t('home.tryDifferentSearchTerm')}
                       </p>
                     </div>
                   )}
@@ -922,10 +800,7 @@ export function WidgetHome({
                 {isFetchingPosts && !isFetchingNextPage && allPopularPosts.length === 0 && (
                   <div className="flex justify-center py-4">
                     <span className="text-[10px] text-muted-foreground/50">
-                      <FormattedMessage
-                        id="widget.home.popular.loading"
-                        defaultMessage="Loading..."
-                      />
+                      {t('home.loading')}
                     </span>
                   </div>
                 )}
@@ -933,24 +808,11 @@ export function WidgetHome({
                   <div className="flex flex-col items-center justify-center py-8 text-center">
                     <LightBulbIcon className="w-8 h-8 text-muted-foreground/30 mb-2" />
                     <p className="text-sm font-medium text-muted-foreground/70">
-                      {activeBoardSlug ? (
-                        <FormattedMessage
-                          id="widget.home.popular.emptyBoard"
-                          defaultMessage="No ideas in this board yet"
-                        />
-                      ) : (
-                        <FormattedMessage
-                          id="widget.home.popular.empty"
-                          defaultMessage="No ideas yet"
-                        />
-                      )}
+                      {activeBoardSlug ? t('home.noIdeasInBoard') : t('home.noIdeasYet')}
                     </p>
                     {!activeBoardSlug && (
                       <p className="text-xs text-muted-foreground/50 mt-0.5">
-                        <FormattedMessage
-                          id="widget.home.popular.emptyHint"
-                          defaultMessage="Be the first to share one!"
-                        />
+                        {t('home.beFirstToShare')}
                       </p>
                     )}
                   </div>
@@ -973,10 +835,7 @@ export function WidgetHome({
                       <div ref={postsSentinelRef} className="flex justify-center py-2">
                         {isFetchingNextPage && (
                           <span className="text-[10px] text-muted-foreground/50">
-                            <FormattedMessage
-                              id="widget.home.popular.loading"
-                              defaultMessage="Loading..."
-                            />
+                            {t('home.loading')}
                           </span>
                         )}
                       </div>
