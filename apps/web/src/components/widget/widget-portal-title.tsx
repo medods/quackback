@@ -3,10 +3,16 @@ import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/solid'
 interface WidgetPortalTitleProps {
   title: string
   onClick: () => void
+  hideLink?: boolean
 }
 
 /** Clickable title that links to the portal. Shows an external link icon on hover. */
-export function WidgetPortalTitle({ title, onClick }: WidgetPortalTitleProps) {
+export function WidgetPortalTitle({ title, onClick, hideLink }: WidgetPortalTitleProps) {
+  if (hideLink)
+    return (
+      <h2 className="text-[15px] font-semibold text-foreground leading-snug inline">{title}</h2>
+    )
+
   return (
     <button type="button" onClick={onClick} className="group text-left mt-0.5 block">
       <h2 className="text-[15px] font-semibold text-foreground leading-snug group-hover:text-primary transition-colors inline">

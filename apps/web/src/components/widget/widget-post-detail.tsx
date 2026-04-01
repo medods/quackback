@@ -1,4 +1,4 @@
-import { useCallback, useRef, useEffect } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChatBubbleLeftIcon, Squares2X2Icon } from '@heroicons/react/24/solid'
 import { TimeAgo } from '@/components/ui/time-ago'
@@ -6,7 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { PostContent } from '@/components/public/post-content'
 import { fetchPublicPostDetail } from '@/lib/server/functions/portal'
 import { createCommentFn } from '@/lib/server/functions/comments'
-import { getWidgetAuthHeaders, generateOneTimeToken } from '@/lib/client/widget-auth'
+import { generateOneTimeToken, getWidgetAuthHeaders } from '@/lib/client/widget-auth'
 import { buildPortalUrl } from './build-portal-url'
 import { widgetQueryKeys } from '@/lib/client/hooks/use-widget-vote'
 import type { PublicPostDetailView } from '@/lib/client/queries/portal-detail'
@@ -184,7 +184,7 @@ export function WidgetPostDetail({
                 </span>
               )}
             </div>
-            <WidgetPortalTitle title={post.title} onClick={handleViewOnPortal} />
+            <WidgetPortalTitle title={post.title} onClick={handleViewOnPortal} hideLink={true} />
             <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground/60 mt-1">
               <span>{post.authorName || t('postDetail.anonymous')}</span>
               <span className="text-muted-foreground/30">&middot;</span>
