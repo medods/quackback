@@ -7,15 +7,15 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   createBoardFn,
-  updateBoardFn,
-  deleteBoardFn,
   type CreateBoardInput,
-  type UpdateBoardInput,
+  deleteBoardFn,
   type DeleteBoardInput,
+  updateBoardFn,
+  type UpdateBoardInput,
 } from '@/lib/server/functions/boards'
 import type { Board } from '@/lib/shared/db-types'
 import type { BoardId } from '@quackback/ids'
-import { boardKeys } from '@/lib/client/hooks/use-boards-query'
+import { boardKeys } from '../hooks/use-boards-query'
 import { adminQueries } from '@/lib/client/queries/admin'
 import { slugify } from '@/lib/shared/utils'
 
