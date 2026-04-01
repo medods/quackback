@@ -128,7 +128,7 @@ export async function updateBoard(id: BoardId, input: UpdateBoardInput): Promise
   } else if (input.name !== undefined) {
     // Auto-update slug if name changes but slug is not explicitly provided
     const newSlug = slugify(input.name)
-    if (newSlug !== existingBoard.slug) {
+    if (newSlug && newSlug !== existingBoard.slug) {
       const existingWithSlug = await db.query.boards.findFirst({
         where: eq(boards.slug, newSlug),
       })
