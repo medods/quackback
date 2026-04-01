@@ -1,4 +1,4 @@
-import { useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from '@tanstack/react-router'
 import {
   DndContext,
@@ -17,7 +17,13 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { PlusIcon, Bars3Icon, TrashIcon, LockClosedIcon } from '@heroicons/react/24/solid'
+import {
+  PlusIcon,
+  Bars3Icon,
+  TrashIcon,
+  LockClosedIcon,
+  PencilSquareIcon,
+} from '@heroicons/react/24/solid'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
@@ -220,6 +226,31 @@ export function StatusList({ initialStatuses }: StatusListProps) {
     setStatuses((prev) => prev.map((s) => (s.id === status.id ? { ...s, color } : s)))
   }
 
+  // Change name (save immediately)
+  const handleNameChange = async (status: PostStatusEntity, name: string) => {
+    const previousName = status.name
+
+    setStatuses((prev) => prev.map((s) => (s.id === status.id ? { ...s, name } : s)))
+    setSavedStatuses((prev) => prev.map((s) => (s.id === status.id ? { ...s, name } : s)))
+
+    try {
+      await updateStatusFn({
+        data: {
+          id: status.id,
+          name,
+        },
+      })
+    } catch (error) {
+      setStatuses((prev) =>
+        prev.map((s) => (s.id === status.id ? { ...s, name: previousName } : s))
+      )
+      setSavedStatuses((prev) =>
+        prev.map((s) => (s.id === status.id ? { ...s, name: previousName } : s))
+      )
+      alert(error instanceof Error ? error.message : 'Failed to rename status')
+    }
+  }
+
   // Discard changes
   const handleDiscard = () => {
     setStatuses(savedStatuses)
@@ -362,6 +393,7 @@ export function StatusList({ initialStatuses }: StatusListProps) {
                       status={status}
                       canDelete={canDeleteInCategory && !status.isDefault}
                       onToggleRoadmap={() => handleToggleRoadmap(status)}
+                      onNameChange={(name) => void handleNameChange(status, name)}
                       onColorChange={(color) => handleColorChange(status, color)}
                       onDelete={() => setDeleteStatus(status)}
                     />
@@ -427,6 +459,7 @@ interface SortableStatusItemProps {
   status: PostStatusEntity
   canDelete: boolean
   onToggleRoadmap: () => void
+  onNameChange: (name: string) => void
   onColorChange: (color: string) => void
   onDelete: () => void
 }
@@ -435,6 +468,7 @@ function SortableStatusItem({
   status,
   canDelete,
   onToggleRoadmap,
+  onNameChange,
   onColorChange,
   onDelete,
 }: SortableStatusItemProps) {
@@ -447,11 +481,46 @@ function SortableStatusItem({
     transition,
     opacity: isDragging ? 0.5 : 1,
   }
+  const [isEditingName, setIsEditingName] = useState(false)
+  const [editingName, setEditingName] = useState(status.name)
+  const nameInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!isEditingName) {
+      setEditingName(status.name)
+    }
+  }, [status.name, isEditingName])
+
+  useEffect(() => {
+    if (isEditingName) {
+      nameInputRef.current?.focus()
+      nameInputRef.current?.select()
+    }
+  }, [isEditingName])
 
   function getDeleteTitle(): string {
     if (status.isDefault) return 'Cannot delete the default status'
     if (!canDelete) return 'Must have at least one status in each category'
     return 'Delete status'
+  }
+
+  const commitNameChange = () => {
+    const trimmedName = editingName.trim()
+    if (!trimmedName) {
+      setEditingName(status.name)
+      setIsEditingName(false)
+      return
+    }
+
+    if (trimmedName !== status.name) {
+      onNameChange(trimmedName)
+    }
+    setIsEditingName(false)
+  }
+
+  const cancelNameChange = () => {
+    setEditingName(status.name)
+    setIsEditingName(false)
   }
 
   return (
@@ -481,7 +550,39 @@ function SortableStatusItem({
       </Popover>
 
       <span className="text-sm flex-1 flex items-center gap-1.5">
-        {status.name}
+        {isEditingName ? (
+          <Input
+            ref={nameInputRef}
+            value={editingName}
+            data-testid={`status-name-input-${status.id}`}
+            onChange={(event) => setEditingName(event.target.value)}
+            onBlur={commitNameChange}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault()
+                commitNameChange()
+              } else if (event.key === 'Escape') {
+                event.preventDefault()
+                cancelNameChange()
+              }
+            }}
+            className="h-7 text-sm max-w-[240px]"
+          />
+        ) : (
+          <>
+            {status.name}
+            <button
+              type="button"
+              onClick={() => setIsEditingName(true)}
+              className="text-muted-foreground hover:text-foreground"
+              title="Edit status name"
+              aria-label="Edit status name"
+              data-testid={`status-name-edit-${status.id}`}
+            >
+              <PencilSquareIcon className="h-3.5 w-3.5" />
+            </button>
+          </>
+        )}
         {status.isDefault && (
           <TooltipProvider>
             <Tooltip>

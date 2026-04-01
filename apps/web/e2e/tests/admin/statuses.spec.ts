@@ -1,4 +1,17 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
+
+const STATUS_NAME_EDIT_TEST_ID_PREFIX = 'status-name-edit-'
+const STATUS_NAME_INPUT_TEST_ID_PREFIX = 'status-name-input-'
+
+async function getFirstEditableStatusId(page: Page): Promise<string> {
+  const editButton = page.locator(`[data-testid^="${STATUS_NAME_EDIT_TEST_ID_PREFIX}"]`).first()
+  await expect(editButton).toBeVisible({ timeout: 10000 })
+
+  const testId = await editButton.getAttribute('data-testid')
+  expect(testId).toBeTruthy()
+
+  return testId!.replace(STATUS_NAME_EDIT_TEST_ID_PREFIX, '')
+}
 
 test.describe('Admin Status Management', () => {
   test.beforeEach(async ({ page }) => {
@@ -101,6 +114,56 @@ test.describe('Admin Status Management', () => {
       // Should be different from initial state
       expect(newState).not.toBe(isChecked)
     }
+  })
+
+  test('can enter inline edit mode for status name', async ({ page }) => {
+    const statusId = await getFirstEditableStatusId(page)
+    const editButton = page.getByTestId(`${STATUS_NAME_EDIT_TEST_ID_PREFIX}${statusId}`)
+
+    await editButton.click()
+
+    const nameInput = page.getByTestId(`${STATUS_NAME_INPUT_TEST_ID_PREFIX}${statusId}`)
+    await expect(nameInput).toBeVisible({ timeout: 5000 })
+    await expect(nameInput).toBeFocused()
+
+    const currentName = await nameInput.inputValue()
+    expect(currentName.trim().length).toBeGreaterThan(0)
+
+    await page.keyboard.press('Escape')
+    await expect(nameInput).toBeHidden({ timeout: 5000 })
+  })
+
+  test('saves renamed status immediately without showing global Save/Discard', async ({ page }) => {
+    const statusId = await getFirstEditableStatusId(page)
+    const editButton = page.getByTestId(`${STATUS_NAME_EDIT_TEST_ID_PREFIX}${statusId}`)
+
+    await editButton.click()
+    const nameInput = page.getByTestId(`${STATUS_NAME_INPUT_TEST_ID_PREFIX}${statusId}`)
+    await expect(nameInput).toBeVisible({ timeout: 5000 })
+
+    const oldName = await nameInput.inputValue()
+    const newName = `${oldName} ${Date.now().toString().slice(-6)}`
+
+    await nameInput.fill(newName)
+    await page.keyboard.press('Enter')
+
+    await expect(nameInput).toBeHidden({ timeout: 5000 })
+    await expect(page.getByText(newName, { exact: true }).first()).toBeVisible({ timeout: 10000 })
+    await expect(page.getByRole('button', { name: 'Save changes' })).toHaveCount(0)
+
+    await page.reload({ waitUntil: 'networkidle' })
+    await expect(page.getByText(newName, { exact: true }).first()).toBeVisible({ timeout: 10000 })
+
+    // Revert to avoid polluting shared seeded data for other tests.
+    await page.getByTestId(`${STATUS_NAME_EDIT_TEST_ID_PREFIX}${statusId}`).click()
+    const revertInput = page.getByTestId(`${STATUS_NAME_INPUT_TEST_ID_PREFIX}${statusId}`)
+    await expect(revertInput).toBeVisible({ timeout: 5000 })
+    await revertInput.fill(oldName)
+    await page.keyboard.press('Enter')
+
+    await expect(revertInput).toBeHidden({ timeout: 5000 })
+    await page.reload({ waitUntil: 'networkidle' })
+    await expect(page.getByText(oldName, { exact: true }).first()).toBeVisible({ timeout: 10000 })
   })
 
   test('shows default status indicator', async ({ page }) => {
