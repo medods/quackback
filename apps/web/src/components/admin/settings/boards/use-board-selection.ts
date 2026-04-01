@@ -15,11 +15,12 @@ export function useBoardSelection(): BoardSelectionState {
   const { board, tab } = Route.useSearch()
 
   function setSelectedBoard(boardSlug: string | null, newTab?: BoardTab): void {
+    const targetTab = newTab ?? tab ?? 'general'
     void navigate({
       to: '/admin/settings/boards',
       search: {
         board: boardSlug ?? undefined,
-        tab: newTab ?? undefined,
+        tab: targetTab === 'general' ? undefined : targetTab,
       },
       replace: true,
     })

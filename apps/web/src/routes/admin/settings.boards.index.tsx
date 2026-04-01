@@ -53,7 +53,15 @@ function BoardsSettingsPage() {
 
   // Auto-select first board if none selected
   useEffect(() => {
-    if (boards.length > 0 && !selectedBoardSlug) {
+    if (boards.length === 0) return
+
+    if (!selectedBoardSlug) {
+      setSelectedBoard(boards[0].slug)
+      return
+    }
+
+    const boardExists = boards.some((board) => board.slug === selectedBoardSlug)
+    if (!boardExists) {
       setSelectedBoard(boards[0].slug)
     }
   }, [boards, selectedBoardSlug, setSelectedBoard])
@@ -81,7 +89,7 @@ function BoardsSettingsPage() {
         <BoardSettingsNav />
 
         <div className="flex-1 space-y-6">
-          <BoardTabContent board={currentBoard} tab={selectedTab} />
+          <BoardTabContent key={currentBoard.id} board={currentBoard} tab={selectedTab} />
         </div>
       </div>
     </div>
