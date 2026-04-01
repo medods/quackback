@@ -1,13 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Squares2X2Icon, PencilIcon } from '@heroicons/react/24/solid'
+import { PencilIcon, Squares2X2Icon } from '@heroicons/react/24/solid'
 import {
-  LightBulbIcon,
-  MagnifyingGlassIcon,
-  XMarkIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  LightBulbIcon,
+  MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline'
-import { motion, AnimatePresence } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import {
   Select,
@@ -20,6 +19,7 @@ import { listPublicPostsFn } from '@/lib/server/functions/public-posts'
 import { useInfiniteScroll } from '@/lib/client/hooks/use-infinite-scroll'
 import { WidgetVoteButton } from './widget-vote-button'
 import { useWidgetAuth } from './widget-auth-provider'
+import { t } from './i18n'
 import type { PostId } from '@quackback/ids'
 
 interface WidgetPost {
@@ -221,7 +221,7 @@ export function WidgetHome({
   const [popularSearch, setPopularSearch] = useState('')
   const [debouncedPopularSearch, setDebouncedPopularSearch] = useState('')
   const popularSearchDebounceRef = useRef<ReturnType<typeof setTimeout>>(null)
-  const [popularSearchOpen, setPopularSearchOpen] = useState(false)
+  const [popularSearchOpen] = useState(false)
   const popularSearchInputRef = useRef<HTMLInputElement>(null)
 
   const statusMap = useMemo(() => new Map(statuses.map((s) => [s.id, s])), [statuses])
@@ -383,7 +383,7 @@ export function WidgetHome({
       if (needsEmail) {
         const identified = await identifyWithEmail(email.trim(), name.trim() || undefined)
         if (!identified) {
-          setError('Could not verify your email. Please try again.')
+          setError(t('home.errorEmail'))
           setIsSubmitting(false)
           return
         }
@@ -399,7 +399,7 @@ export function WidgetHome({
       } else if (!isIdentified) {
         const ok = await ensureSession()
         if (!ok) {
-          setError('Could not create session. Please try again.')
+          setError(t('home.errorSession'))
           setIsSubmitting(false)
           return
         }
@@ -436,7 +436,7 @@ export function WidgetHome({
 
       collapseForm()
     } catch {
-      setError('Network error. Please try again.')
+      setError(t('home.errorNetwork'))
     } finally {
       setIsSubmitting(false)
     }
@@ -468,7 +468,9 @@ export function WidgetHome({
                   className="overflow-hidden"
                 >
                   <div className="flex items-center px-3 pt-2.5 pb-0.5">
-                    <span className="text-[11px] text-muted-foreground mr-1">Posting to</span>
+                    <span className="text-[11px] text-muted-foreground mr-1">
+                      {t('home.postingTo')}
+                    </span>
                     <Select value={selectedBoardId} onValueChange={setSelectedBoardId}>
                       <SelectTrigger
                         size="xs"
@@ -507,7 +509,7 @@ export function WidgetHome({
               <motion.input
                 ref={inputRef}
                 type="text"
-                placeholder="What's your idea?"
+                placeholder={t('home.ideaPlaceholder')}
                 value={title}
                 onChange={(e) => {
                   const val = e.target.value
@@ -544,7 +546,7 @@ export function WidgetHome({
                     className="px-3 pb-2"
                   >
                     <textarea
-                      placeholder="Add more details..."
+                      placeholder={t('home.detailsPlaceholder')}
                       value={content}
                       onChange={(e) => setContent(e.target.value)}
                       maxLength={10000}
@@ -567,7 +569,7 @@ export function WidgetHome({
                           <div className="px-3 pb-2">
                             <p className="text-[10px] font-medium text-muted-foreground/60 flex items-center gap-1 mb-1.5">
                               <LightBulbIcon className="w-3 h-3" />
-                              Similar ideas
+                              {t('home.similarIdeas')}
                             </p>
                             <div className="space-y-0.5">
                               {similarPostResults.posts.slice(0, 3).map((post) => (
@@ -607,14 +609,14 @@ export function WidgetHome({
                         <input
                           type="email"
                           required
-                          placeholder="Your email"
+                          placeholder={t('home.yourEmail')}
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           className={`flex-1 min-w-0 ${identityInputCls}`}
                         />
                         <input
                           type="text"
-                          placeholder="Name (optional)"
+                          placeholder={t('home.nameOptional')}
                           value={name}
                           onChange={(e) => setName(e.target.value)}
                           className={`w-28 shrink-0 ${identityInputCls}`}
@@ -625,7 +627,7 @@ export function WidgetHome({
                       <p className="text-[11px] text-muted-foreground truncate mr-2">
                         {user ? (
                           <>
-                            Posting as{' '}
+                            {t('home.postingAs')}{' '}
                             <span className="font-medium text-foreground">
                               {user.name || user.email}
                             </span>
@@ -633,14 +635,14 @@ export function WidgetHome({
                         ) : needsEmail ? (
                           email.trim() ? (
                             <>
-                              Posting as{' '}
+                              {t('home.postingAs')}{' '}
                               <span className="font-medium text-foreground">{email.trim()}</span>
                             </>
                           ) : (
-                            'Your email is required'
+                            t('home.emailRequired')
                           )
                         ) : (
-                          'Posting anonymously'
+                          t('home.postingAnonymously')
                         )}
                       </p>
                       <div className="flex items-center gap-1.5">
@@ -649,14 +651,14 @@ export function WidgetHome({
                           onClick={collapseForm}
                           className="px-2.5 py-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
                         >
-                          Cancel
+                          {t('home.cancel')}
                         </button>
                         <button
                           type="submit"
                           disabled={!canSubmitForm || isSubmitting}
                           className="px-3 py-1 text-[11px] font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
                         >
-                          {isSubmitting ? 'Submitting...' : 'Submit'}
+                          {isSubmitting ? t('home.submitting') : t('home.submit')}
                         </button>
                       </div>
                     </div>
@@ -668,43 +670,6 @@ export function WidgetHome({
 
           {/* Popular ideas */}
           <div className="mt-2">
-            <div className="flex items-center justify-between px-1 py-1.5">
-              {popularSearchOpen ? (
-                <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                  <MagnifyingGlassIcon className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
-                  <input
-                    ref={popularSearchInputRef}
-                    type="text"
-                    value={popularSearch}
-                    onChange={(e) => setPopularSearch(e.target.value)}
-                    placeholder="Search ideas..."
-                    className="flex-1 min-w-0 bg-transparent text-xs text-foreground placeholder:text-muted-foreground/50 outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setPopularSearchOpen(false)}
-                    className="shrink-0 text-muted-foreground/60 hover:text-foreground transition-colors"
-                  >
-                    <XMarkIcon className="w-3 h-3" />
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <p className="text-[11px] font-medium text-muted-foreground/60 uppercase tracking-wide">
-                    Popular ideas
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setPopularSearchOpen(true)}
-                    className="text-muted-foreground/40 hover:text-muted-foreground transition-colors"
-                    aria-label="Search ideas"
-                  >
-                    <MagnifyingGlassIcon className="w-3.5 h-3.5" />
-                  </button>
-                </>
-              )}
-            </div>
-
             {boards.length >= 2 && (
               <div className="relative mb-2">
                 <div
@@ -733,7 +698,7 @@ export function WidgetHome({
                     type="button"
                     onClick={() => pills.scrollBy(-120)}
                     className="absolute left-0 top-0 bottom-0.5 flex items-center pl-0.5 pr-6 bg-gradient-to-r from-background via-background/80 to-transparent"
-                    aria-label="Scroll left"
+                    aria-label={t('home.scrollLeft')}
                   >
                     <ChevronLeftIcon className="w-3 h-3 text-muted-foreground" />
                   </button>
@@ -743,7 +708,7 @@ export function WidgetHome({
                     type="button"
                     onClick={() => pills.scrollBy(120)}
                     className="absolute right-0 top-0 bottom-0.5 flex items-center pr-0.5 pl-6 bg-gradient-to-l from-background via-background/80 to-transparent"
-                    aria-label="Scroll right"
+                    aria-label={t('home.scrollRight')}
                   >
                     <ChevronRightIcon className="w-3 h-3 text-muted-foreground" />
                   </button>
@@ -755,7 +720,9 @@ export function WidgetHome({
               <>
                 {(isPopularSearchFetching || popularSearch !== debouncedPopularSearch) && (
                   <div className="flex justify-center py-4">
-                    <span className="text-[10px] text-muted-foreground/50">Searching...</span>
+                    <span className="text-[10px] text-muted-foreground/50">
+                      {t('home.searching')}
+                    </span>
                   </div>
                 )}
                 {!isPopularSearchFetching &&
@@ -763,9 +730,11 @@ export function WidgetHome({
                   (popularSearchData?.posts.length ?? 0) === 0 && (
                     <div className="flex flex-col items-center justify-center py-8 text-center">
                       <MagnifyingGlassIcon className="w-8 h-8 text-muted-foreground/30 mb-2" />
-                      <p className="text-sm font-medium text-muted-foreground/70">No ideas found</p>
+                      <p className="text-sm font-medium text-muted-foreground/70">
+                        {t('home.noIdeasFound')}
+                      </p>
                       <p className="text-xs text-muted-foreground/50 mt-0.5">
-                        Try a different search term
+                        {t('home.tryDifferentSearchTerm')}
                       </p>
                     </div>
                   )}
@@ -794,18 +763,20 @@ export function WidgetHome({
               <>
                 {isFetchingPosts && !isFetchingNextPage && allPopularPosts.length === 0 && (
                   <div className="flex justify-center py-4">
-                    <span className="text-[10px] text-muted-foreground/50">Loading...</span>
+                    <span className="text-[10px] text-muted-foreground/50">
+                      {t('home.loading')}
+                    </span>
                   </div>
                 )}
                 {!isFetchingPosts && allPopularPosts.length === 0 && (
                   <div className="flex flex-col items-center justify-center py-8 text-center">
                     <LightBulbIcon className="w-8 h-8 text-muted-foreground/30 mb-2" />
                     <p className="text-sm font-medium text-muted-foreground/70">
-                      {activeBoardSlug ? 'No ideas in this board yet' : 'No ideas yet'}
+                      {activeBoardSlug ? t('home.noIdeasInBoard') : t('home.noIdeasYet')}
                     </p>
                     {!activeBoardSlug && (
                       <p className="text-xs text-muted-foreground/50 mt-0.5">
-                        Be the first to share one!
+                        {t('home.beFirstToShare')}
                       </p>
                     )}
                   </div>
@@ -827,7 +798,9 @@ export function WidgetHome({
                     {hasNextPage && (
                       <div ref={postsSentinelRef} className="flex justify-center py-2">
                         {isFetchingNextPage && (
-                          <span className="text-[10px] text-muted-foreground/50">Loading...</span>
+                          <span className="text-[10px] text-muted-foreground/50">
+                            {t('home.loading')}
+                          </span>
                         )}
                       </div>
                     )}

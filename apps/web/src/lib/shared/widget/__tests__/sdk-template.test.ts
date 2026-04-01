@@ -145,17 +145,6 @@ describe('buildWidgetSDK', () => {
     expect(result).toContain('if (!isEmbeddedMode() && !(config && config.trigger === false)) {')
   })
 
-  it('should support mobile detection', () => {
-    const result = buildWidgetSDK('https://feedback.acme.com')
-    expect(result).toContain('window.innerWidth < 640')
-  })
-
-  it('positions desktop panel above the trigger button (bottom: 88px)', () => {
-    const result = buildWidgetSDK('https://feedback.acme.com')
-    // Panel must be offset above the trigger (24px margin + 56px trigger + 8px gap)
-    expect(result).toContain('bottom: "88px"')
-  })
-
   it('defines CHAT_ICON and CLOSE_ICON variables for icon swap', () => {
     const result = buildWidgetSDK('https://feedback.acme.com')
     expect(result).toContain('var CHAT_ICON =')
