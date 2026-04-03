@@ -1,13 +1,13 @@
-import { useCallback, useRef, useEffect } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChatBubbleLeftIcon, Squares2X2Icon } from '@heroicons/react/24/solid'
-import { useIntl, FormattedMessage } from 'react-intl'
+import { FormattedMessage, useIntl } from 'react-intl'
 import { TimeAgo } from '@/components/ui/time-ago'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { PostContent } from '@/components/public/post-content'
 import { fetchPublicPostDetail } from '@/lib/server/functions/portal'
 import { createCommentFn } from '@/lib/server/functions/comments'
-import { getWidgetAuthHeaders, generateOneTimeToken } from '@/lib/client/widget-auth'
+import { generateOneTimeToken, getWidgetAuthHeaders } from '@/lib/client/widget-auth'
 import { buildPortalUrl } from './build-portal-url'
 import { widgetQueryKeys } from '@/lib/client/hooks/use-widget-vote'
 import type { PublicPostDetailView } from '@/lib/client/queries/portal-detail'
@@ -267,7 +267,7 @@ export function WidgetPostDetail({
           </div>
 
           {/* Root comment form — unified: textarea + email (when anonymous) + single Post */}
-          {!post.isCommentsLocked && !hmacRequired && (
+          {!post.isCommentsLocked && (!hmacRequired || canComment) && (
             <WidgetCommentForm
               isIdentified={isIdentified}
               user={user}
