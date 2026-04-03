@@ -249,6 +249,7 @@ function WidgetPage() {
           statuses={statuses}
           anonymousVotingEnabled={features.anonymousVoting}
           anonymousCommentingEnabled={features.anonymousCommenting}
+          imageUploadsInWidget={imageUploadsInWidget}
         />
       )}
 

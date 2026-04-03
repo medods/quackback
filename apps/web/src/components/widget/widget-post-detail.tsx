@@ -18,6 +18,7 @@ import { sendToHost } from '@/lib/client/widget-bridge'
 import { WidgetCommentForm } from './widget-comment-form'
 import { WidgetPortalTitle } from './widget-portal-title'
 import type { PostId } from '@quackback/ids'
+import { useWidgetImageUpload } from '@/lib/client/hooks/use-image-upload'
 
 interface StatusInfo {
   id: string
@@ -30,6 +31,7 @@ interface WidgetPostDetailProps {
   statuses: StatusInfo[]
   anonymousVotingEnabled?: boolean
   anonymousCommentingEnabled?: boolean
+  imageUploadsInWidget?: boolean
 }
 
 export function WidgetPostDetail({
@@ -37,6 +39,7 @@ export function WidgetPostDetail({
   statuses,
   anonymousVotingEnabled = true,
   anonymousCommentingEnabled = false,
+  imageUploadsInWidget = true,
 }: WidgetPostDetailProps) {
   const intl = useIntl()
   const {
@@ -48,6 +51,7 @@ export function WidgetPostDetail({
     emitEvent,
     sessionVersion,
   } = useWidgetAuth()
+  const { upload: uploadImage } = useWidgetImageUpload()
   const queryClient = useQueryClient()
 
   // Widget-specific post detail query that injects Bearer headers so the server
@@ -114,6 +118,7 @@ export function WidgetPostDetail({
   // Identified users can always vote/comment; anonymous users only if the setting is enabled
   const canVote = isIdentified || anonymousVotingEnabled
   const canComment = isIdentified || anonymousCommentingEnabled
+  const canUploadImages = isIdentified && imageUploadsInWidget
 
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -268,6 +273,8 @@ export function WidgetPostDetail({
               user={user}
               onSubmit={submitComment}
               identifyWithEmail={identifyWithEmail}
+              canUploadImages={canUploadImages}
+              onImageUpload={canUploadImages ? uploadImage : undefined}
             />
           )}
 
@@ -298,6 +305,8 @@ export function WidgetPostDetail({
             pinnedCommentId={post.pinnedCommentId}
             canComment={canComment && !post.isCommentsLocked}
             onSubmitComment={handleSubmitReply}
+            canUploadImages={canUploadImages}
+            onImageUpload={canUploadImages ? uploadImage : undefined}
           />
         </div>
       </div>

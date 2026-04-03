@@ -1,6 +1,8 @@
 import { useState, useCallback } from 'react'
 import { useIntl, FormattedMessage } from 'react-intl'
 import { useWidgetAuth } from './widget-auth-provider'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
+import type { JSONContent } from '@tiptap/react'
 
 interface WidgetUser {
   id: string
@@ -14,6 +16,8 @@ interface WidgetCommentFormProps {
   user: WidgetUser | null
   onSubmit: (content: string) => Promise<void>
   identifyWithEmail: (email: string, name?: string) => Promise<boolean>
+  canUploadImages?: boolean
+  onImageUpload?: (file: File) => Promise<string>
 }
 
 export function WidgetCommentForm({
@@ -21,14 +25,21 @@ export function WidgetCommentForm({
   user,
   onSubmit,
   identifyWithEmail,
+  canUploadImages = false,
+  onImageUpload,
 }: WidgetCommentFormProps) {
   const intl = useIntl()
   const { ensureSessionThen } = useWidgetAuth()
+  const [commentJson, setCommentJson] = useState<JSONContent | null>(null)
   const [commentText, setCommentText] = useState('')
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const handleEditorChange = useCallback((json: JSONContent, _html: string, markdown: string) => {
+    setCommentJson(json)
+    setCommentText(markdown)
+  }, [])
 
   const canSubmit = isIdentified
     ? commentText.trim().length > 0
@@ -59,6 +70,7 @@ export function WidgetCommentForm({
 
       await ensureSessionThen(async () => {
         await onSubmit(content)
+        setCommentJson(null)
         setCommentText('')
       })
     } catch (err) {
@@ -87,22 +99,29 @@ export function WidgetCommentForm({
 
   return (
     <div className="mb-3">
-      <textarea
-        value={commentText}
-        onChange={(e) => setCommentText(e.target.value)}
+      <RichTextEditor
+        value={commentJson || ''}
+        onChange={handleEditorChange}
         placeholder={intl.formatMessage({
           id: 'widget.commentForm.placeholder',
           defaultMessage: 'Write a comment...',
         })}
-        rows={2}
+        minHeight="52px"
         disabled={isSubmitting}
-        className="w-full min-h-[52px] max-h-[120px] resize-none rounded-md border border-border/50 bg-muted/20 px-2.5 py-2 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/30 focus:border-primary/50 disabled:opacity-50 transition-colors"
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-            e.preventDefault()
-            handleSubmit()
-          }
+        className="text-xs"
+        features={{
+          headings: true,
+          codeBlocks: true,
+          taskLists: true,
+          blockquotes: true,
+          dividers: true,
+          tables: true,
+          images: canUploadImages,
+          embeds: true,
+          bubbleMenu: true,
+          slashMenu: true,
         }}
+        onImageUpload={canUploadImages ? onImageUpload : undefined}
       />
 
       {!isIdentified ? (

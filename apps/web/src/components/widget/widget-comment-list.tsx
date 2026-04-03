@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ArrowUturnLeftIcon,
   ChevronDownIcon,
@@ -6,24 +6,56 @@ import {
   FaceSmileIcon,
   MapPinIcon,
 } from '@heroicons/react/24/solid'
-import { useIntl, FormattedMessage } from 'react-intl'
+import { FormattedMessage, useIntl } from 'react-intl'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { TimeAgo } from '@/components/ui/time-ago'
 import { REACTION_EMOJIS } from '@/lib/shared/db-types'
 import { addReactionFn, removeReactionFn } from '@/lib/server/functions/comments'
 import { getWidgetAuthHeaders } from '@/lib/client/widget-auth'
-import { getInitials, cn } from '@/lib/shared/utils'
+import { cn, getInitials } from '@/lib/shared/utils'
 import type { PublicCommentView } from '@/lib/client/queries/portal-detail'
 import type { CommentReactionCount } from '@/lib/shared'
+import { RichTextContent, RichTextEditor } from '@/components/ui/rich-text-editor'
+import type { JSONContent } from '@tiptap/react'
+import { MarkdownManager } from '@tiptap/markdown'
+import StarterKit from '@tiptap/starter-kit'
+import Link from '@tiptap/extension-link'
+import Underline from '@tiptap/extension-underline'
+import Image from '@tiptap/extension-image'
+import TaskList from '@tiptap/extension-task-list'
+import TaskItem from '@tiptap/extension-task-item'
+import { Table } from '@tiptap/extension-table'
+import TableRow from '@tiptap/extension-table-row'
+import TableCell from '@tiptap/extension-table-cell'
+import TableHeader from '@tiptap/extension-table-header'
 
 const MAX_WIDGET_DEPTH = 2
+const COMMENT_MARKDOWN_MANAGER = new MarkdownManager({
+  extensions: [
+    StarterKit.configure({
+      heading: { levels: [1, 2, 3] },
+    }),
+    Link.configure({ openOnClick: false }),
+    Underline,
+    Image,
+    TaskList,
+    TaskItem.configure({ nested: true }),
+    Table.configure({ resizable: false }),
+    TableRow,
+    TableCell,
+    TableHeader,
+  ],
+  markedOptions: { gfm: true },
+})
 
 interface WidgetCommentListProps {
   comments: PublicCommentView[]
   pinnedCommentId: string | null
   canComment?: boolean
   onSubmitComment?: (content: string, parentId: string) => Promise<void>
+  canUploadImages?: boolean
+  onImageUpload?: (file: File) => Promise<string>
 }
 
 export function WidgetCommentList({
@@ -31,6 +63,8 @@ export function WidgetCommentList({
   pinnedCommentId,
   canComment = false,
   onSubmitComment,
+  canUploadImages = false,
+  onImageUpload,
 }: WidgetCommentListProps) {
   const sortedComments = [...comments].sort((a, b) => {
     if (pinnedCommentId) {
@@ -61,6 +95,8 @@ export function WidgetCommentList({
           depth={0}
           canComment={canComment}
           onSubmitComment={onSubmitComment}
+          canUploadImages={canUploadImages}
+          onImageUpload={onImageUpload}
         />
       ))}
     </div>
@@ -73,6 +109,8 @@ interface WidgetCommentItemProps {
   depth: number
   canComment: boolean
   onSubmitComment?: (content: string, parentId: string) => Promise<void>
+  canUploadImages: boolean
+  onImageUpload?: (file: File) => Promise<string>
 }
 
 function WidgetCommentItem({
@@ -81,12 +119,14 @@ function WidgetCommentItem({
   depth,
   canComment,
   onSubmitComment,
+  canUploadImages,
+  onImageUpload,
 }: WidgetCommentItemProps) {
   const intl = useIntl()
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [showReplyForm, setShowReplyForm] = useState(false)
+  const [replyJson, setReplyJson] = useState<JSONContent | null>(null)
   const [replyText, setReplyText] = useState('')
-  const replyTextareaRef = useRef<HTMLTextAreaElement>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [reactions, setReactions] = useState<CommentReactionCount[]>(comment.reactions)
   const [reactionPending, setReactionPending] = useState(false)
@@ -96,9 +136,13 @@ function WidgetCommentItem({
     setReactions(comment.reactions)
   }, [comment.reactions])
 
-  useEffect(() => {
-    if (showReplyForm) replyTextareaRef.current?.focus()
-  }, [showReplyForm])
+  const handleReplyEditorChange = useCallback(
+    (json: JSONContent, _html: string, markdown: string) => {
+      setReplyJson(json)
+      setReplyText(markdown)
+    },
+    []
+  )
 
   const isDeleted = !!comment.deletedAt
   const isPinned = pinnedCommentId === comment.id
@@ -129,6 +173,7 @@ function WidgetCommentItem({
     setIsSubmitting(true)
     try {
       await onSubmitComment(content, comment.id)
+      setReplyJson(null)
       setReplyText('')
       setShowReplyForm(false)
     } catch {
@@ -141,6 +186,13 @@ function WidgetCommentItem({
   const authorName =
     comment.authorName ||
     intl.formatMessage({ id: 'widget.commentList.authorFallback', defaultMessage: 'Anonymous' })
+  const renderedContent = useMemo(() => {
+    try {
+      return COMMENT_MARKDOWN_MANAGER.parse(comment.content) as JSONContent
+    } catch {
+      return null
+    }
+  }, [comment.content])
 
   if (isDeleted) {
     return (
@@ -200,6 +252,8 @@ function WidgetCommentItem({
                   depth={depth + 1}
                   canComment={canComment}
                   onSubmitComment={onSubmitComment}
+                  canUploadImages={canUploadImages}
+                  onImageUpload={onImageUpload}
                 />
               ))}
             </div>
@@ -253,9 +307,16 @@ function WidgetCommentItem({
         </div>
 
         {/* Content */}
-        <p className="text-xs text-foreground/90 whitespace-pre-wrap mt-1 ms-7 leading-relaxed">
-          {comment.content}
-        </p>
+        {renderedContent ? (
+          <RichTextContent
+            content={renderedContent}
+            className="mt-1 ms-7 text-xs leading-relaxed text-foreground/90 [&_p]:my-0 [&_ul]:my-1 [&_ol]:my-1 [&_pre]:my-1 [&_blockquote]:my-1 [&_img]:my-1"
+          />
+        ) : (
+          <p className="text-xs text-foreground/90 whitespace-pre-wrap mt-1 ms-7 leading-relaxed">
+            {comment.content}
+          </p>
+        )}
 
         {/* Actions row: collapse, reactions, emoji picker, reply */}
         <div className="flex items-center gap-1 mt-1.5 ms-7">
@@ -343,9 +404,9 @@ function WidgetCommentItem({
           <div className="overflow-hidden">
             <div className="mt-2 ms-7 p-2 bg-muted/30 rounded-md border border-border/30">
               <div className="flex gap-2">
-                <textarea
-                  value={replyText}
-                  onChange={(e) => setReplyText(e.target.value)}
+                <RichTextEditor
+                  value={replyJson || ''}
+                  onChange={handleReplyEditorChange}
                   placeholder={intl.formatMessage(
                     {
                       id: 'widget.commentList.replyPlaceholder',
@@ -353,16 +414,22 @@ function WidgetCommentItem({
                     },
                     { name: authorName }
                   )}
-                  rows={2}
-                  ref={replyTextareaRef}
+                  minHeight="64px"
                   disabled={isSubmitting}
-                  className="flex-1 min-h-[44px] max-h-[100px] resize-none rounded-md border border-border/50 bg-background px-2.5 py-2 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/30 focus:border-primary/50 disabled:opacity-50 transition-colors"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                      e.preventDefault()
-                      handleSubmitReply()
-                    }
+                  className="flex-1 text-xs"
+                  features={{
+                    headings: true,
+                    codeBlocks: true,
+                    taskLists: true,
+                    blockquotes: true,
+                    dividers: true,
+                    tables: true,
+                    images: canUploadImages,
+                    embeds: true,
+                    bubbleMenu: true,
+                    slashMenu: true,
                   }}
+                  onImageUpload={canUploadImages ? onImageUpload : undefined}
                 />
                 <button
                   type="button"
@@ -381,6 +448,7 @@ function WidgetCommentItem({
                 type="button"
                 onClick={() => {
                   setShowReplyForm(false)
+                  setReplyJson(null)
                   setReplyText('')
                 }}
                 className="mt-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
@@ -410,6 +478,8 @@ function WidgetCommentItem({
                 depth={depth + 1}
                 canComment={canComment}
                 onSubmitComment={onSubmitComment}
+                canUploadImages={canUploadImages}
+                onImageUpload={onImageUpload}
               />
             ))}
           </div>
