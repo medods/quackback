@@ -595,6 +595,7 @@ export function WidgetHome({
                       })}
                       minHeight="80px"
                       borderless
+                      toolbarPosition="top"
                       features={{
                         headings: true,
                         codeBlocks: true,
