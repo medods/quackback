@@ -11,11 +11,22 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 async function runMigrations() {
-  const connectionString = process.env.DATABASE_URL
+  const rawConnectionString = process.env.DATABASE_URL
 
-  if (!connectionString) {
+  if (!rawConnectionString) {
     throw new Error('DATABASE_URL environment variable is required')
   }
+
+  // dotenv does not expand ${VAR} references by default.
+  // Expand placeholders in DATABASE_URL so values like
+  // postgresql://...:${POSTGRES_PORT}/... work in migration scripts.
+  const connectionString = rawConnectionString.replace(/\$\{([A-Z0-9_]+)\}/gi, (_, key) => {
+    const value = process.env[key]
+    if (!value) {
+      throw new Error(`DATABASE_URL references missing environment variable: ${key}`)
+    }
+    return value
+  })
 
   // Allow overriding migrations folder via env var (for Docker)
   // Default to ./drizzle relative to this script
