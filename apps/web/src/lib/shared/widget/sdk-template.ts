@@ -3,9 +3,9 @@
  *
  * Generates a vanilla JS SDK (~10KB) that:
  * - Replays the command queue from the inline snippet
- * - Creates and manages the trigger button + iframe panel
+ * - Creates and manages either the trigger button + iframe panel or embedded panel
  * - Handles identify via postMessage to iframe
- * - Supports floating (popover) mode
+ * - Supports floating (popover) and embedded (selector) modes
  *
  * The SDK is generated as a string and served by the /api/widget/sdk.js route.
  */
@@ -45,7 +45,6 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
   var config = null;
   var iframe = null;
   var trigger = null;
-  var backdrop = null;
   var panel = null;
   var isOpen = false;
   var isReady = false;
@@ -56,7 +55,11 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
   var iconClose = null;
   var listeners = {};
   var pendingOpen = null;
-  var isMobile = window.innerWidth < 640;
+  var routeAdapter = null;
+  var routeUnsubscribe = null;
+  var routeSyncLock = false;
+  var lastRouteKey = null;
+  var acceptRouteChangesFromWidget = false;
 
   // =========================================================================
   // Event System
@@ -86,6 +89,225 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
     return el;
   }
 
+  function resolveMountNode() {
+    if (!config) return null;
+    var selector = config.selector || config.mountSelector;
+    if (typeof selector !== "string") return null;
+    selector = selector.trim();
+    if (!selector) return null;
+    try {
+      return document.querySelector(selector);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function isEmbeddedMode() {
+    return !!resolveMountNode();
+  }
+
+  // =========================================================================
+  // Router Sync
+  // =========================================================================
+
+  function asNonEmptyString(value) {
+    if (typeof value !== "string") return null;
+    var trimmed = value.trim();
+    return trimmed ? trimmed : null;
+  }
+
+  function normalizeRoute(route) {
+    if (!route || typeof route !== "object") return null;
+
+    var view = route.view;
+    if (view === "home") return { view: "home" };
+    if (view === "changelog") return { view: "changelog" };
+
+    if (view === "post-detail") {
+      var postId = asNonEmptyString(route.postId);
+      return postId ? { view: "post-detail", postId: postId } : { view: "home" };
+    }
+
+    if (view === "changelog-detail") {
+      var changelogId = asNonEmptyString(route.changelogId);
+      return changelogId
+        ? { view: "changelog-detail", changelogId: changelogId }
+        : { view: "home" };
+    }
+
+    return { view: "home" };
+  }
+
+  function getRouteKey(route) {
+    if (!route) return "";
+    if (route.view === "post-detail") return "post-detail:" + route.postId;
+    if (route.view === "changelog-detail") return "changelog-detail:" + route.changelogId;
+    return route.view;
+  }
+
+  function routeToOpenOptions(route) {
+    if (!route) return null;
+    if (route.view === "post-detail") {
+      return { view: "post-detail", postId: route.postId, __fromRouteSync: true };
+    }
+    if (route.view === "changelog") {
+      return { view: "changelog", __fromRouteSync: true };
+    }
+    if (route.view === "changelog-detail") {
+      return { view: "changelog-detail", changelogId: route.changelogId, __fromRouteSync: true };
+    }
+    return { view: "home", __fromRouteSync: true };
+  }
+
+  function readDefaultRoute() {
+    var params = new URLSearchParams(window.location.search);
+    var view = params.get("qb_page");
+    if (!view) return null;
+
+    return normalizeRoute({
+      view: view,
+      postId: params.get("qb_postId"),
+      changelogId: params.get("qb_changelogId"),
+    });
+  }
+
+  function writeDefaultRoute(route) {
+    var normalized = normalizeRoute(route);
+    if (!normalized) return;
+
+    var url = new URL(window.location.href);
+    url.searchParams.delete("qb_page");
+    url.searchParams.delete("qb_postId");
+    url.searchParams.delete("qb_changelogId");
+    url.searchParams.set("qb_page", normalized.view);
+
+    if (normalized.view === "post-detail") {
+      url.searchParams.set("qb_postId", normalized.postId);
+    }
+
+    if (normalized.view === "changelog-detail") {
+      url.searchParams.set("qb_changelogId", normalized.changelogId);
+    }
+
+    window.history.replaceState(window.history.state, "", url.toString());
+  }
+
+  function subscribeDefaultRoute(onRoute) {
+    var onPopState = function() {
+      var route = readDefaultRoute();
+      if (route) onRoute(route);
+    };
+    window.addEventListener("popstate", onPopState);
+    return function() {
+      window.removeEventListener("popstate", onPopState);
+    };
+  }
+
+  function getRouteAdapter() {
+    var customRouter = config && config.router;
+    if (
+      customRouter &&
+      typeof customRouter === "object" &&
+      typeof customRouter.read === "function" &&
+      typeof customRouter.write === "function"
+    ) {
+      return {
+        read: function() { return customRouter.read(); },
+        write: function(route) { return customRouter.write(route); },
+        subscribe:
+          typeof customRouter.subscribe === "function"
+            ? function(onRoute) { return customRouter.subscribe(onRoute); }
+            : undefined,
+      };
+    }
+
+    return {
+      read: readDefaultRoute,
+      write: writeDefaultRoute,
+      subscribe: subscribeDefaultRoute,
+    };
+  }
+
+  function applyRouteFromHost(route) {
+    var normalized = normalizeRoute(route);
+    if (!normalized) return;
+    var openOptions = routeToOpenOptions(normalized);
+    if (!openOptions) return;
+    if (isReady) sendToWidget("quackback:open", openOptions);
+    else pendingOpen = openOptions;
+    showPanel();
+  }
+
+  function syncHostRoute(route) {
+    if (!routeAdapter || typeof routeAdapter.write !== "function") return;
+    var normalized = normalizeRoute(route);
+    if (!normalized) return;
+
+    var routeKey = getRouteKey(normalized);
+    if (routeKey === lastRouteKey) return;
+
+    lastRouteKey = routeKey;
+    routeSyncLock = true;
+
+    var released = false;
+    function releaseLock() {
+      if (released) return;
+      released = true;
+      routeSyncLock = false;
+    }
+
+    try {
+      var result = routeAdapter.write(normalized);
+      if (result && typeof result.then === "function") {
+        result.then(releaseLock, releaseLock);
+      } else {
+        releaseLock();
+      }
+    } catch (e) {
+      releaseLock();
+    }
+  }
+
+  function teardownRouteSync() {
+    if (typeof routeUnsubscribe === "function") {
+      try { routeUnsubscribe(); } catch (e) {}
+    }
+    routeUnsubscribe = null;
+    routeAdapter = null;
+    routeSyncLock = false;
+    lastRouteKey = null;
+    acceptRouteChangesFromWidget = false;
+  }
+
+  function setupRouteSync() {
+    teardownRouteSync();
+    routeAdapter = getRouteAdapter();
+    acceptRouteChangesFromWidget = false;
+
+    if (routeAdapter && typeof routeAdapter.subscribe === "function") {
+      try {
+        var unsub = routeAdapter.subscribe(function(route) {
+          if (routeSyncLock) return;
+          var normalized = normalizeRoute(route);
+          if (!normalized) return;
+          var routeKey = getRouteKey(normalized);
+          if (routeKey === lastRouteKey) return;
+          lastRouteKey = routeKey;
+          applyRouteFromHost(normalized);
+        });
+        if (typeof unsub === "function") routeUnsubscribe = unsub;
+      } catch (e) {}
+    }
+
+    if (!routeAdapter || typeof routeAdapter.read !== "function") return;
+    try {
+      var initialRoute = normalizeRoute(routeAdapter.read());
+      if (!initialRoute) return;
+      lastRouteKey = getRouteKey(initialRoute);
+      applyRouteFromHost(initialRoute);
+    } catch (e) {}
+  }
+
   // =========================================================================
   // Trigger Button
   // =========================================================================
@@ -113,6 +335,8 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
   }
 
   function createTrigger() {
+    if (isEmbeddedMode()) return;
+
     var placement = (config && config.placement) || "right";
     var colors = getThemeColors();
 
@@ -204,57 +428,35 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
   function createPanel() {
     if (panel) return;
 
+    var mountNode = resolveMountNode();
+    var embedded = !!mountNode;
     var placement = (config && config.placement) || "right";
     var boardParam = config && config.defaultBoard ? "board=" + encodeURIComponent(config.defaultBoard) : "";
     var closeParam = config && config.trigger === false ? "showClose=1" : "";
-    var localeParam = config && config.locale ? "locale=" + encodeURIComponent(config.locale) : "";
-    var queryParts = [boardParam, closeParam, localeParam].filter(Boolean);
+    var queryParts = [boardParam, closeParam].filter(Boolean);
     var iframeUrl = WIDGET_URL + (queryParts.length ? "?" + queryParts.join("&") : "");
-    var side = placement === "left" ? "left" : "right";
 
-    // Inject responsive styles once
-    if (!document.getElementById("quackback-widget-styles")) {
-      var styleEl = document.createElement("style");
-      styleEl.id = "quackback-widget-styles";
-      styleEl.textContent = [
-        // Desktop: popover anchored to trigger button
-        ".quackback-panel{position:fixed;z-index:2147483647;overflow:hidden;pointer-events:none;",
-        "bottom:88px;" + side + ":24px;width:400px;height:min(600px,calc(100vh - 108px));",
-        "border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.12);",
-        "opacity:0;transform:scale(0);transform-origin:bottom " + side + ";",
-        "transition:opacity 280ms cubic-bezier(0.34,1.56,0.64,1),transform 280ms cubic-bezier(0.34,1.56,0.64,1)}",
-        // Desktop open state
-        ".quackback-panel.quackback-open{opacity:1;transform:scale(1);pointer-events:auto}",
-        // Desktop close transition (applied briefly)
-        ".quackback-panel.quackback-closing{opacity:0;transform:scale(0);pointer-events:none;",
-        "transition:opacity 200ms cubic-bezier(0.4,0,1,1),transform 200ms cubic-bezier(0.4,0,1,1)}",
-        // Mobile: full-screen overlay
-        "@media(max-width:639px){",
-        ".quackback-panel{top:0;left:0;right:0;bottom:0;width:100%;height:100vh;",
-        "border-radius:0;box-shadow:none;",
-        "opacity:1;transform:translateY(100%);transform-origin:center;",
-        "transition:transform 300ms cubic-bezier(0.4,0,0.2,1)}",
-        ".quackback-panel.quackback-open{transform:translateY(0)}",
-        ".quackback-panel.quackback-closing{transform:translateY(100%);transition:transform 200ms cubic-bezier(0.4,0,1,1)}}",
-        // Backdrop
-        ".quackback-backdrop{position:fixed;inset:0;z-index:2147483646;background:rgba(0,0,0,0.4);",
-        "opacity:0;pointer-events:none;transition:opacity 200ms ease}",
-        ".quackback-backdrop.quackback-open{opacity:1;pointer-events:auto}",
-        "@media(min-width:640px){.quackback-backdrop{display:none!important}}",
-      ].join("");
-      document.head.appendChild(styleEl);
-    }
-
-    // Backdrop
-    backdrop = document.createElement("div");
-    backdrop.className = "quackback-backdrop";
-    backdrop.addEventListener("click", function() { dispatch("close"); });
-    document.body.appendChild(backdrop);
-
-    // Panel
-    panel = document.createElement("div");
-    panel.className = "quackback-panel quackback-widget-iframe-wrapper";
-    document.body.appendChild(panel);
+    // Panel container
+    panel = createElement("div", {
+      position: embedded ? "relative" : "fixed",
+      bottom: embedded ? "auto" : "24px",
+      [placement === "left" ? "left" : "right"]: embedded ? "auto" : "24px",
+      zIndex: embedded ? "auto" : "2147483647",
+      width: embedded ? "100%" : "400px",
+      maxWidth: "100%",
+      height: embedded ? "100%" : "min(600px, calc(100vh - 100px))",
+      minHeight: embedded ? "500px" : "0",
+      borderRadius: embedded ? "0" : "12px",
+      overflow: "hidden",
+      boxShadow: embedded ? "none" : "0 8px 30px rgba(0,0,0,0.12)",
+      display: embedded ? "block" : "none",
+      opacity: embedded ? "1" : "0",
+      transform: embedded ? "none" : "scale(0.95)",
+      transformOrigin: embedded ? "center center" : placement === "left" ? "bottom left" : "bottom right",
+      transition: embedded ? "none" : "opacity 200ms ease-out, transform 200ms ease-out",
+    }, {
+      className: "quackback-widget-iframe-wrapper",
+    });
 
     // Iframe
     iframe = createElement("iframe", {
@@ -264,20 +466,29 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
       colorScheme: "normal",
     }, {
       src: iframeUrl,
-      title: "Feedback Widget",
-      sandbox: "allow-scripts allow-forms allow-same-origin allow-popups allow-downloads",
-      allow: "clipboard-write",
+      sandbox: "allow-scripts allow-forms allow-same-origin allow-popups",
       className: "quackback-widget-iframe",
     });
 
     panel.appendChild(iframe);
+    if (mountNode) mountNode.appendChild(panel);
+    else document.body.appendChild(panel);
   }
 
   function showPanel() {
     if (!panel) createPanel();
+    if (!panel) return;
+
+    if (isEmbeddedMode()) {
+      if (!isOpen) {
+        isOpen = true;
+        emit("open", {});
+      }
+      return;
+    }
+
     if (isOpen) return;
     isOpen = true;
-    isMobile = window.innerWidth < 640;
 
     if (trigger) {
       trigger.setAttribute("aria-expanded", "true");
@@ -294,24 +505,26 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
       }
     }
 
-    panel.classList.remove("quackback-closing");
-    if (backdrop) backdrop.classList.remove("quackback-closing");
-    // Force reflow so the browser registers the base state before transitioning
+    panel.style.display = "block";
+    // Force reflow so the browser commits opacity:0 / scale(0) before we transition
     void panel.offsetHeight;
-    panel.classList.add("quackback-open");
-    if (backdrop) backdrop.classList.add("quackback-open");
+      panel.style.transition = "opacity 280ms cubic-bezier(0.34,1.56,0.64,1), transform 280ms cubic-bezier(0.34,1.56,0.64,1)";
+    panel.style.opacity = "1";
+    panel.style.transform = "scale(1)";
 
     emit("open", {});
   }
 
   function hidePanel() {
     if (!isOpen) return;
+
+    if (isEmbeddedMode()) return;
+
     isOpen = false;
-    isMobile = window.innerWidth < 640;
 
     if (trigger && isIdentified && !(config && config.trigger === false)) {
       trigger.setAttribute("aria-expanded", "false");
-      trigger.style.display = "flex";
+      trigger.style.display = "flex"; // Always restore — handles mobile→desktop resize edge case
       if (!isMobile) {
         trigger.setAttribute("aria-label", "Open feedback widget");
         if (iconChat && iconClose) {
@@ -323,16 +536,9 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
       }
     }
 
-    panel.classList.remove("quackback-open");
-    panel.classList.add("quackback-closing");
-    if (backdrop) {
-      backdrop.classList.remove("quackback-open");
-      backdrop.classList.add("quackback-closing");
-    }
-    setTimeout(function() {
-      if (!isOpen && panel) panel.classList.remove("quackback-closing");
-      if (!isOpen && backdrop) backdrop.classList.remove("quackback-closing");
-    }, 300);
+    panel.style.opacity = "0";
+    panel.style.transform = "scale(0.95)";
+    setTimeout(function() { if (!isOpen && panel) panel.style.display = "none"; }, 200);
 
     emit("close", {});
   }
@@ -356,19 +562,17 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
     switch (msg.type) {
       case "quackback:ready":
         isReady = true;
-        // Tell the widget whether the parent viewport is mobile-sized
-        sendToWidget("quackback:mobile", isMobile);
         // Replay any pending identify
         if (pendingIdentify !== null) {
           sendToWidget("quackback:identify", pendingIdentify);
           pendingIdentify = null;
         }
-        if (config && config.locale) sendToWidget("quackback:locale", config.locale);
         if (metadata) sendToWidget("quackback:metadata", metadata);
         if (pendingOpen) {
           sendToWidget("quackback:open", pendingOpen);
           pendingOpen = null;
         }
+        acceptRouteChangesFromWidget = true;
         emit("ready", {});
         break;
 
@@ -392,6 +596,12 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
       case "quackback:navigate":
         if (msg.url) window.open(msg.url, "_blank");
         break;
+
+      case "quackback:route-change":
+        if (acceptRouteChangesFromWidget && (isOpen || isEmbeddedMode())) {
+          syncHostRoute(msg.data);
+        }
+        break;
     }
   });
 
@@ -403,7 +613,11 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
     switch (command) {
       case "init":
         config = options || {};
-        isMobile = window.innerWidth < 640;
+        setupRouteSync();
+        if (isEmbeddedMode()) {
+          createPanel();
+          showPanel();
+        }
         break;
 
       case "identify":
@@ -418,7 +632,7 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
           // Show trigger on first identify
           if (!isIdentified) {
             isIdentified = true;
-            if (!(config && config.trigger === false)) {
+            if (!isEmbeddedMode() && !(config && config.trigger === false)) {
               if (!trigger) createTrigger();
               else trigger.style.display = "flex";
             }
@@ -427,6 +641,7 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
           // the identify round-trip in the background — before the user opens
           // the panel. This eliminates the visible delay on vote highlights.
           if (!panel) createPanel();
+          if (isEmbeddedMode()) showPanel();
           if (isReady) sendToWidget("quackback:identify", options);
           else pendingIdentify = options;
         }
@@ -479,15 +694,12 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
 
       case "destroy":
         hidePanel();
+        teardownRouteSync();
         if (panel && panel.parentNode) panel.parentNode.removeChild(panel);
-        if (backdrop && backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
         if (trigger && trigger.parentNode) trigger.parentNode.removeChild(trigger);
-        var styleTag = document.getElementById("quackback-widget-styles");
-        if (styleTag && styleTag.parentNode) styleTag.parentNode.removeChild(styleTag);
         panel = null;
         iframe = null;
         trigger = null;
-        backdrop = null;
         config = null;
         metadata = null;
         listeners = {};
@@ -515,29 +727,5 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
     dispatch(queue[i][0], queue[i][1], queue[i][2]);
   }
 
-  // Keep isMobile in sync and notify the widget iframe on change
-  window.addEventListener("resize", function() {
-    var wasMobile = isMobile;
-    isMobile = window.innerWidth < 640;
-    if (wasMobile !== isMobile) {
-      // Notify widget so it can show/hide the close button
-      if (isReady) sendToWidget("quackback:mobile", isMobile);
-      // Show/hide trigger when crossing the breakpoint while panel is open
-      if (isOpen && trigger) {
-        if (isMobile) {
-          trigger.style.display = "none";
-        } else {
-          trigger.style.display = "flex";
-          trigger.setAttribute("aria-label", "Close feedback widget");
-          if (iconChat && iconClose) {
-            iconChat.style.opacity = "0";
-            iconChat.style.transform = "rotate(90deg)";
-            iconClose.style.opacity = "1";
-            iconClose.style.transform = "rotate(0deg)";
-          }
-        }
-      }
-    }
-  });
 })();`
 }

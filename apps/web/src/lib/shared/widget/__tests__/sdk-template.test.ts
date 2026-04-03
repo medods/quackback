@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { buildWidgetSDK } from '../sdk-template'
 
 describe('buildWidgetSDK', () => {
@@ -72,7 +72,35 @@ describe('buildWidgetSDK', () => {
     expect(result).toContain('"quackback:ready"')
     expect(result).toContain('"quackback:close"')
     expect(result).toContain('"quackback:navigate"')
+    expect(result).toContain('"quackback:route-change"')
     expect(result).toContain('"quackback:identify-result"')
+  })
+
+  it('should include default URL route sync query params', () => {
+    const result = buildWidgetSDK('https://feedback.acme.com')
+    expect(result).toContain('qb_page')
+    expect(result).toContain('qb_postId')
+    expect(result).toContain('qb_changelogId')
+  })
+
+  it('should support router plugin API in init config', () => {
+    const result = buildWidgetSDK('https://feedback.acme.com')
+    expect(result).toContain('config && config.router')
+    expect(result).toContain('typeof customRouter.read === "function"')
+    expect(result).toContain('typeof customRouter.write === "function"')
+  })
+
+  it('should support route views for post and changelog details', () => {
+    const result = buildWidgetSDK('https://feedback.acme.com')
+    expect(result).toContain('view === "post-detail"')
+    expect(result).toContain('view === "changelog-detail"')
+    expect(result).toContain('return { view: "home" };')
+  })
+
+  it('should accept widget route changes only after widget ready', () => {
+    const result = buildWidgetSDK('https://feedback.acme.com')
+    expect(result).toContain('acceptRouteChangesFromWidget = true;')
+    expect(result).toContain('acceptRouteChangesFromWidget && (isOpen || isEmbeddedMode())')
   })
 
   it('should escape special characters in base URL', () => {
@@ -88,26 +116,33 @@ describe('buildWidgetSDK', () => {
     expect(result).toContain('Open feedback widget')
   })
 
-  it('should set panel iframe title', () => {
-    const result = buildWidgetSDK('https://feedback.acme.com')
-    expect(result).toContain('Feedback Widget')
-  })
-
   it('should add CSS classes to iframe wrapper and iframe', () => {
     const result = buildWidgetSDK('https://feedback.acme.com')
     expect(result).toContain('quackback-widget-iframe-wrapper')
     expect(result).toContain('quackback-widget-iframe')
   })
 
-  it('should support mobile detection', () => {
+  it('should resolve mount selector from init config', () => {
     const result = buildWidgetSDK('https://feedback.acme.com')
-    expect(result).toContain('window.innerWidth < 640')
+    expect(result).toContain('var selector = config.selector || config.mountSelector;')
+    expect(result).toContain('document.querySelector(selector);')
   })
 
-  it('positions desktop panel above the trigger button (bottom: 88px)', () => {
+  it('should append panel into mount selector when provided', () => {
     const result = buildWidgetSDK('https://feedback.acme.com')
-    // Panel must be offset above the trigger (24px margin + 56px trigger + 8px gap)
-    expect(result).toContain('bottom:88px')
+    expect(result).toContain('if (mountNode) mountNode.appendChild(panel);')
+  })
+
+  it('should initialize embedded panel immediately in init command', () => {
+    const result = buildWidgetSDK('https://feedback.acme.com')
+    expect(result).toContain('if (isEmbeddedMode()) {')
+    expect(result).toContain('createPanel();')
+    expect(result).toContain('showPanel();')
+  })
+
+  it('should skip trigger creation when running in embedded mode', () => {
+    const result = buildWidgetSDK('https://feedback.acme.com')
+    expect(result).toContain('if (!isEmbeddedMode() && !(config && config.trigger === false)) {')
   })
 
   it('defines CHAT_ICON and CLOSE_ICON variables for icon swap', () => {
