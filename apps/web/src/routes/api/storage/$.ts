@@ -5,42 +5,6 @@ import { createFileRoute } from '@tanstack/react-router'
 const proxyCache = new Map<string, { data: ArrayBuffer; contentType: string; cachedAt: number }>()
 const PROXY_CACHE_TTL = 60 * 60 * 1000 // 1 hour
 
-function isPrivateIpv4(hostname: string): boolean {
-  const parts = hostname.split('.')
-  if (parts.length !== 4) return false
-  const nums = parts.map((part) => Number(part))
-  if (nums.some((n) => !Number.isInteger(n) || n < 0 || n > 255)) return false
-
-  const [a, b] = nums
-  if (a === 10) return true
-  if (a === 127) return true
-  if (a === 192 && b === 168) return true
-  if (a === 172 && b >= 16 && b <= 31) return true
-  if (a === 169 && b === 254) return true
-  return false
-}
-
-function isLikelyPrivateStorageHost(hostname: string): boolean {
-  const host = hostname.trim().toLowerCase()
-  if (!host) return false
-  if (host === 'localhost' || host === '::1' || host === 'host.docker.internal') return true
-  if (host.endsWith('.local')) return true
-  if (host === 'minio') return true
-  if (isPrivateIpv4(host)) return true
-
-  // Single-label hostnames (e.g. "minio", "bucket") are usually internal DNS.
-  return !host.includes('.')
-}
-
-function shouldProxyPresignedUrl(presignedUrl: string): boolean {
-  try {
-    const url = new URL(presignedUrl)
-    return isLikelyPrivateStorageHost(url.hostname)
-  } catch {
-    return false
-  }
-}
-
 export const Route = createFileRoute('/api/storage/$')({
   server: {
     handlers: {
@@ -75,7 +39,7 @@ export const Route = createFileRoute('/api/storage/$')({
         const forceProxy = url.searchParams.has('email')
 
         try {
-          const serveViaProxy = async (): Promise<Response> => {
+          if (config.s3Proxy || forceProxy) {
             // Serve from cache if fresh
             const cached = proxyCache.get(key)
             if (cached && Date.now() - cached.cachedAt < PROXY_CACHE_TTL) {
@@ -101,17 +65,8 @@ export const Route = createFileRoute('/api/storage/$')({
               },
             })
           }
-          if (config.s3Proxy || forceProxy) {
-            return serveViaProxy()
-          }
 
           const presignedUrl = await generatePresignedGetUrl(key)
-
-          // If presigned URL points to an internal host (e.g. "minio:9000"),
-          // the browser on a public domain can't resolve it. Fall back to proxy mode.
-          if (shouldProxyPresignedUrl(presignedUrl)) {
-            return serveViaProxy()
-          }
 
           return new Response(null, {
             status: 302,
