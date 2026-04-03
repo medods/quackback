@@ -12,6 +12,14 @@ echo "  Quackback Development Setup"
 echo "  ============================"
 echo ""
 
+# Load .env if it exists
+if [ -f .env ]; then
+  set -a
+  # shellcheck disable=SC1091
+  source .env
+  set +a
+fi
+
 # Check for required tools
 check_command() {
   if ! command -v "$1" &> /dev/null; then
@@ -54,12 +62,13 @@ fi
 
 echo ""
 
-# Check if port 5432 is in use by another container
-if docker ps --format '{{.Names}}' | grep -v quackback-db | xargs -I {} docker port {} 2>/dev/null | grep -q "5432"; then
-  echo -e "${YELLOW}Port 5432 is in use by another container${NC}"
+# Check if port ${POSTGRES_PORT:-5432} is in use by another container
+POSTGRES_PORT="${POSTGRES_PORT:-5432}"
+if docker ps --format '{{.Names}}' | grep -v quackback-db | xargs -I {} docker port {} 2>/dev/null | grep -q "$POSTGRES_PORT"; then
+  echo -e "${YELLOW}Port $POSTGRES_PORT is in use by another container${NC}"
   echo "Stopping conflicting containers..."
-  docker ps --format '{{.ID}} {{.Names}} {{.Ports}}' | grep "5432->" | grep -v quackback-db | awk '{print $1}' | xargs -r docker stop
-  echo -e "${GREEN}Cleared port 5432${NC}"
+  docker ps --format '{{.ID}} {{.Names}} {{.Ports}}' | grep "$POSTGRES_PORT->" | grep -v quackback-db | awk '{print $1}' | xargs -r docker stop
+  echo -e "${GREEN}Cleared port $POSTGRES_PORT${NC}"
 fi
 
 # Start PostgreSQL, MinIO, and Dragonfly (minio-init handles bucket creation automatically)
@@ -76,7 +85,7 @@ echo -e "${GREEN}PostgreSQL is ready${NC}"
 # Wait for MinIO to be ready
 echo "Waiting for MinIO to be ready..."
 sleep 2
-until curl -sf http://localhost:9000/minio/health/live > /dev/null 2>&1; do
+until curl -sf http://localhost:${MINIO_PORT:-9000}/minio/health/live > /dev/null 2>&1; do
   sleep 1
 done
 echo -e "${GREEN}MinIO is ready (bucket 'quackback' configured automatically)${NC}"
@@ -109,7 +118,7 @@ echo -e "  1. Run the development server:"
 echo -e "     ${YELLOW}bun run dev${NC}"
 echo ""
 echo -e "  2. Open the app in your browser:"
-echo -e "     ${YELLOW}http://localhost:3000${NC}"
+echo -e "     ${YELLOW}http://localhost:${PORT:-3000}${NC}"
 echo ""
 echo -e "  3. (Optional) Seed demo data:"
 echo -e "     ${YELLOW}bun run db:seed${NC}"
