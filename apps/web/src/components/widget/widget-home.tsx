@@ -2,7 +2,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { PencilIcon, Squares2X2Icon } from '@heroicons/react/24/solid'
 import { LightBulbIcon, MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import { AnimatePresence, motion } from 'framer-motion'
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
 import { FormattedMessage, useIntl } from 'react-intl'
 import {
   Select,
@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/select'
 import { listPublicPostsFn } from '@/lib/server/functions/public-posts'
 import { useInfiniteScroll } from '@/lib/client/hooks/use-infinite-scroll'
+import { widgetQueryKeys } from '@/lib/client/hooks/use-widget-vote'
 import { WidgetVoteButton } from './widget-vote-button'
 import { useWidgetAuth } from './widget-auth-provider'
 import { sendToHost } from '@/lib/client/widget-bridge'
@@ -166,6 +167,7 @@ export function WidgetHome({
   imageUploadsInWidget = true,
 }: WidgetHomeProps) {
   const intl = useIntl()
+  const queryClient = useQueryClient()
   const {
     ensureSession,
     ensureSessionThen,
@@ -175,6 +177,7 @@ export function WidgetHome({
     emitEvent,
     metadata,
     identifyWithEmail,
+    sessionVersion,
   } = useWidgetAuth()
   const { upload: uploadImage } = useWidgetImageUpload()
   const canUploadImages = isIdentified && imageUploadsInWidget
@@ -423,10 +426,32 @@ export function WidgetHome({
       onPostCreated?.({
         id: result.id,
         title: result.title,
-        voteCount: 0,
+        voteCount: result.voteCount,
         statusId: result.statusId ?? null,
         board: result.board,
       })
+
+      // New posts are auto-voted by their author; reflect that immediately in vote UI.
+      queryClient.setQueryData<Set<string>>(
+        widgetQueryKeys.votedPosts.bySession(sessionVersion),
+        (old) => {
+          const next = new Set(old ?? [])
+          next.add(result.id)
+          return next
+        }
+      )
+      queryClient.setQueriesData<Set<string>>(
+        { queryKey: widgetQueryKeys.votedPosts.all },
+        (old) => {
+          const next = new Set(old ?? [])
+          next.add(result.id)
+          return next
+        }
+      )
+
+      // Refresh list/search caches so newly created posts show up without page reload.
+      void queryClient.invalidateQueries({ queryKey: ['widget', 'posts', 'popular'] })
+      void queryClient.invalidateQueries({ queryKey: ['widget', 'search', 'popular'] })
 
       collapseForm()
     } catch {
