@@ -3,6 +3,7 @@ import { useIntl, FormattedMessage } from 'react-intl'
 import { useWidgetAuth } from './widget-auth-provider'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import type { JSONContent } from '@tiptap/react'
+import { serializeWidgetCommentMarkdown } from './widget-comment-markdown'
 
 interface WidgetUser {
   id: string
@@ -36,9 +37,9 @@ export function WidgetCommentForm({
   const [name, setName] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const handleEditorChange = useCallback((json: JSONContent, _html: string, markdown: string) => {
+  const handleEditorChange = useCallback((json: JSONContent) => {
     setCommentJson(json)
-    setCommentText(markdown)
+    setCommentText(serializeWidgetCommentMarkdown(json))
   }, [])
 
   const canSubmit = isIdentified

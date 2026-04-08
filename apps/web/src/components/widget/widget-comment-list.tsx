@@ -18,36 +18,12 @@ import type { PublicCommentView } from '@/lib/client/queries/portal-detail'
 import type { CommentReactionCount } from '@/lib/shared'
 import { RichTextContent, RichTextEditor } from '@/components/ui/rich-text-editor'
 import type { JSONContent } from '@tiptap/react'
-import { MarkdownManager } from '@tiptap/markdown'
-import StarterKit from '@tiptap/starter-kit'
-import Link from '@tiptap/extension-link'
-import Underline from '@tiptap/extension-underline'
-import Image from '@tiptap/extension-image'
-import TaskList from '@tiptap/extension-task-list'
-import TaskItem from '@tiptap/extension-task-item'
-import { Table } from '@tiptap/extension-table'
-import TableRow from '@tiptap/extension-table-row'
-import TableCell from '@tiptap/extension-table-cell'
-import TableHeader from '@tiptap/extension-table-header'
+import {
+  parseWidgetCommentMarkdown,
+  serializeWidgetCommentMarkdown,
+} from './widget-comment-markdown'
 
 const MAX_WIDGET_DEPTH = 2
-const COMMENT_MARKDOWN_MANAGER = new MarkdownManager({
-  extensions: [
-    StarterKit.configure({
-      heading: { levels: [1, 2, 3] },
-    }),
-    Link.configure({ openOnClick: false }),
-    Underline,
-    Image,
-    TaskList,
-    TaskItem.configure({ nested: true }),
-    Table.configure({ resizable: false }),
-    TableRow,
-    TableCell,
-    TableHeader,
-  ],
-  markedOptions: { gfm: true },
-})
 
 interface WidgetCommentListProps {
   comments: PublicCommentView[]
@@ -136,13 +112,10 @@ function WidgetCommentItem({
     setReactions(comment.reactions)
   }, [comment.reactions])
 
-  const handleReplyEditorChange = useCallback(
-    (json: JSONContent, _html: string, markdown: string) => {
-      setReplyJson(json)
-      setReplyText(markdown)
-    },
-    []
-  )
+  const handleReplyEditorChange = useCallback((json: JSONContent) => {
+    setReplyJson(json)
+    setReplyText(serializeWidgetCommentMarkdown(json))
+  }, [])
 
   const isDeleted = !!comment.deletedAt
   const isPinned = pinnedCommentId === comment.id
@@ -187,11 +160,7 @@ function WidgetCommentItem({
     comment.authorName ||
     intl.formatMessage({ id: 'widget.commentList.authorFallback', defaultMessage: 'Anonymous' })
   const renderedContent = useMemo(() => {
-    try {
-      return COMMENT_MARKDOWN_MANAGER.parse(comment.content) as JSONContent
-    } catch {
-      return null
-    }
+    return parseWidgetCommentMarkdown(comment.content)
   }, [comment.content])
 
   if (isDeleted) {
