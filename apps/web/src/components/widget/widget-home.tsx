@@ -1,12 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { PencilIcon, Squares2X2Icon } from '@heroicons/react/24/solid'
-import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  LightBulbIcon,
-  MagnifyingGlassIcon,
-  XMarkIcon,
-} from '@heroicons/react/24/outline'
+import { LightBulbIcon, MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { FormattedMessage, useIntl } from 'react-intl'
@@ -160,43 +154,6 @@ const WidgetPostRow = memo(
     prev.compact === next.compact &&
     prev.canVote === next.canVote
 )
-
-function usePillsScroll() {
-  const ref = useRef<HTMLDivElement>(null)
-  const [canScrollLeft, setCanScrollLeft] = useState(false)
-  const [canScrollRight, setCanScrollRight] = useState(false)
-
-  const update = useCallback(() => {
-    const el = ref.current
-    if (!el) return
-    const left = el.scrollLeft > 0
-    const right = el.scrollLeft + el.clientWidth < el.scrollWidth - 1
-    setCanScrollLeft((prev) => (prev === left ? prev : left))
-    setCanScrollRight((prev) => (prev === right ? prev : right))
-  }, [])
-
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-    update()
-    el.addEventListener('scroll', update, { passive: true })
-    const ro = new ResizeObserver(update)
-    ro.observe(el)
-    return () => {
-      el.removeEventListener('scroll', update)
-      ro.disconnect()
-    }
-  }, [update])
-
-  const scrollBy = useCallback((delta: number) => {
-    ref.current?.scrollBy({ left: delta, behavior: 'smooth' })
-  }, [])
-
-  return { ref, canScrollLeft, canScrollRight, scrollBy }
-}
-
-// ── Main component ──
-
 export function WidgetHome({
   initialPosts,
   initialHasMore = false,
@@ -245,7 +202,6 @@ export function WidgetHome({
   const similarDebounceRef = useRef<ReturnType<typeof setTimeout>>(null)
   const [activeBoardSlug, setActiveBoardSlug] = useState<string | null>(null)
   const [popularSort, setPopularSort] = useState<WidgetPopularSort>('top')
-  const pills = usePillsScroll()
   const [popularSearch, setPopularSearch] = useState('')
   const [debouncedPopularSearch, setDebouncedPopularSearch] = useState('')
   const popularSearchDebounceRef = useRef<ReturnType<typeof setTimeout>>(null)
@@ -823,14 +779,14 @@ export function WidgetHome({
                 </div>
               ) : (
                 <>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 min-w-0">
                     <Select
                       value={popularSort}
                       onValueChange={(value) => setPopularSort(value as WidgetPopularSort)}
                     >
                       <SelectTrigger
                         size="xs"
-                        className="h-6 min-h-6 px-2 text-[11px] border-border/60 bg-transparent"
+                        className="h-6 min-h-6 px-2 text-[11px] border-border/60 bg-transparent whitespace-nowrap"
                       >
                         <SelectValue />
                       </SelectTrigger>
@@ -867,6 +823,34 @@ export function WidgetHome({
                         </SelectItem>
                       </SelectContent>
                     </Select>
+                    {boards.length >= 2 && (
+                      <Select
+                        value={activeBoardSlug ?? 'all'}
+                        onValueChange={(value) =>
+                          setActiveBoardSlug(value === 'all' ? null : value)
+                        }
+                      >
+                        <SelectTrigger
+                          size="xs"
+                          className="h-6 min-h-6 px-2 text-[11px] border-border/60 bg-transparent whitespace-nowrap"
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent align="start">
+                          <SelectItem value="all" className="text-xs py-1">
+                            <FormattedMessage
+                              id="widget.home.boards.all"
+                              defaultMessage="All categories"
+                            />
+                          </SelectItem>
+                          {boards.map((board) => (
+                            <SelectItem key={board.id} value={board.slug} className="text-xs py-1">
+                              {board.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
                   </div>
                   <button
                     type="button"
@@ -882,58 +866,6 @@ export function WidgetHome({
                 </>
               )}
             </div>
-
-            {boards.length >= 2 && (
-              <div className="relative mb-2">
-                <div
-                  ref={pills.ref}
-                  className="flex gap-1 overflow-x-auto scrollbar-none px-1 pb-0.5"
-                >
-                  {boards.map((board) => (
-                    <button
-                      key={board.id}
-                      type="button"
-                      onClick={() =>
-                        setActiveBoardSlug(activeBoardSlug === board.slug ? null : board.slug)
-                      }
-                      className={`rounded-full text-[11px] px-2 py-0.5 whitespace-nowrap transition-colors shrink-0 ${
-                        activeBoardSlug === board.slug
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted/50 text-muted-foreground hover:bg-muted'
-                      }`}
-                    >
-                      {board.name}
-                    </button>
-                  ))}
-                </div>
-                {pills.canScrollLeft && (
-                  <button
-                    type="button"
-                    onClick={() => pills.scrollBy(-120)}
-                    className="absolute start-0 top-0 bottom-0.5 flex items-center ps-0.5 pe-6 bg-gradient-to-r from-background via-background/80 to-transparent"
-                    aria-label={intl.formatMessage({
-                      id: 'widget.home.scroll.ariaLeft',
-                      defaultMessage: 'Scroll left',
-                    })}
-                  >
-                    <ChevronLeftIcon className="w-3 h-3 text-muted-foreground" />
-                  </button>
-                )}
-                {pills.canScrollRight && (
-                  <button
-                    type="button"
-                    onClick={() => pills.scrollBy(120)}
-                    className="absolute end-0 top-0 bottom-0.5 flex items-center pe-0.5 ps-6 bg-gradient-to-l from-background via-background/80 to-transparent"
-                    aria-label={intl.formatMessage({
-                      id: 'widget.home.scroll.ariaRight',
-                      defaultMessage: 'Scroll right',
-                    })}
-                  >
-                    <ChevronRightIcon className="w-3 h-3 text-muted-foreground" />
-                  </button>
-                )}
-              </div>
-            )}
 
             {isPopularSearchActive && (
               <>

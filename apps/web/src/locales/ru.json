@@ -25,6 +25,7 @@
   "widget.home.form.errorSession": "Не удалось продолжить. Попробуйте еще раз.",
   "widget.home.form.errorNetwork": "Ошибка сети. Попробуйте снова.",
   "widget.home.similar.heading": "Похожие предложения",
+  "widget.home.boards.all": "Все категории",
   "widget.home.popular.heading": "Популярные предложения",
   "widget.home.popular.sort.top": "Топ голосов",
   "widget.home.popular.sort.least": "Мало голосов",

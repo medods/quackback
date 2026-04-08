@@ -25,6 +25,7 @@
   "widget.home.form.errorSession": "Could not create session. Please try again.",
   "widget.home.form.errorNetwork": "Network error. Please try again.",
   "widget.home.similar.heading": "Similar ideas",
+  "widget.home.boards.all": "All categories",
   "widget.home.popular.heading": "Popular ideas",
   "widget.home.popular.sort.top": "Most votes",
   "widget.home.popular.sort.least": "Least votes",
