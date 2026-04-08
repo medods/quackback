@@ -1963,7 +1963,7 @@ function generateContentHTML(content: JSONContent): string {
         const imgWidth = node.attrs?.width !== undefined ? safePositiveInt(node.attrs.width, 0) : 0
         // Only apply width (not height) so h-auto preserves aspect ratio
         const style = imgWidth ? `style="width:${imgWidth}px;"` : ''
-        return `<img src="${src}" alt="${alt}" class="max-w-full h-auto rounded-lg" ${style} />`
+        return `<a href="${src}" target="_blank" rel="noopener noreferrer" class="inline-block align-top cursor-zoom-in"><img src="${src}" alt="${alt}" class="max-w-full h-auto rounded-lg" ${style} /></a>`
       }
 
       case 'youtube': {
