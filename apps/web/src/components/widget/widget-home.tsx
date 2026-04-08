@@ -771,10 +771,13 @@ export function WidgetHome({
 
           {/* Popular ideas */}
           <div className="mt-2 min-h-0 flex-1 flex flex-col">
-            <div className="flex items-center justify-between px-1 h-7 shrink-0">
+            <div className="flex items-center justify-between px-1 h-10 shrink-0">
               {popularSearchOpen ? (
-                <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                  <MagnifyingGlassIcon className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
+                <div
+                  className="flex items-center gap-1.5 rounded-md border border-primary/40 bg-primary/5 px-2 h-7"
+                  style={{ width: '315px', minWidth: 0 }}
+                >
+                  <MagnifyingGlassIcon className="w-3.5 h-3.5 text-primary/60 shrink-0" />
                   <input
                     ref={popularSearchInputRef}
                     type="text"
@@ -787,26 +790,26 @@ export function WidgetHome({
                       id: 'widget.home.popular.search.placeholder',
                       defaultMessage: 'Search ideas...',
                     })}
-                    className="flex-1 min-w-0 h-5 bg-transparent text-xs text-foreground placeholder:text-muted-foreground/50 outline-none"
+                    className="flex-1 min-w-0 h-7 bg-transparent text-xs text-foreground placeholder:text-muted-foreground/50 outline-none focus:caret-primary"
                   />
                   <button
                     type="button"
                     onClick={() => setPopularSearchOpen(false)}
-                    className="shrink-0 text-muted-foreground/60 hover:text-foreground transition-colors"
+                    className="shrink-0 text-primary/50 hover:text-primary transition-colors"
                   >
-                    <XMarkIcon className="w-3 h-3" />
+                    <XMarkIcon className="w-4 h-4" />
                   </button>
                 </div>
               ) : (
                 <>
-                  <div className="flex items-center gap-1 min-w-0">
+                  <div className="flex items-center gap-1 min-w-0 flex-1">
                     <Select
                       value={popularSort}
                       onValueChange={(value) => setPopularSort(value as WidgetPopularSort)}
                     >
                       <SelectTrigger
                         size="xs"
-                        className="h-6 min-h-6 px-2 text-[11px] border-border/60 bg-transparent whitespace-nowrap"
+                        className="h-7 min-h-7 px-2 text-[11px] border-border/60 bg-transparent whitespace-nowrap"
                       >
                         <SelectValue />
                       </SelectTrigger>
@@ -852,7 +855,7 @@ export function WidgetHome({
                       >
                         <SelectTrigger
                           size="xs"
-                          className="h-6 min-h-6 px-2 text-[11px] border-border/60 bg-transparent whitespace-nowrap"
+                          className="h-7 min-h-7 px-2 text-[11px] border-border/60 bg-transparent whitespace-nowrap"
                         >
                           <SelectValue />
                         </SelectTrigger>
@@ -871,18 +874,19 @@ export function WidgetHome({
                         </SelectContent>
                       </Select>
                     )}
+                    <button
+                      type="button"
+                      onClick={() => setPopularSearchOpen(true)}
+                      className="flex items-center gap-1 text-primary/70 hover:text-primary transition-colors"
+                      aria-label={intl.formatMessage({
+                        id: 'widget.home.popular.search.aria',
+                        defaultMessage: 'Search ideas',
+                      })}
+                    >
+                      <MagnifyingGlassIcon className="w-4 h-4" />
+                      <span className="text-[13px]">Поиск</span>
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setPopularSearchOpen(true)}
-                    className="text-muted-foreground/40 hover:text-muted-foreground transition-colors"
-                    aria-label={intl.formatMessage({
-                      id: 'widget.home.popular.search.aria',
-                      defaultMessage: 'Search ideas',
-                    })}
-                  >
-                    <MagnifyingGlassIcon className="w-3.5 h-3.5" />
-                  </button>
                 </>
               )}
             </div>
