@@ -138,7 +138,7 @@ describe('isNativeWidget', () => {
 
   it('returns true regardless of other params', async () => {
     Object.defineProperty(window, 'location', {
-      value: { search: '?locale=fr&source=native&other=1' },
+      value: { search: '?locale=ru&source=native&other=1' },
       writable: true,
       configurable: true,
     })

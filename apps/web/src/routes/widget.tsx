@@ -75,7 +75,7 @@ function WidgetLayout() {
   const { themeStyles, customCss, googleFontsUrl, portalUser, portalSessionToken, hmacRequired } =
     Route.useLoaderData()
 
-  // Read initial locale from URL param (?locale=fr)
+  // Read initial locale from URL param (?locale=ru)
   const initialLocale =
     typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('locale') : null
 

@@ -61,7 +61,7 @@ interface WidgetAuthProviderProps {
   portalSessionToken?: string | null
   /** When true, inline email capture is disabled (identify endpoint requires HMAC hash) */
   hmacRequired?: boolean
-  /** Initial locale from URL param (?locale=fr). SDK postMessage overrides this. */
+  /** Initial locale from URL param (?locale=ru). SDK postMessage overrides this. */
   initialLocale?: string | null
   children: ReactNode
 }

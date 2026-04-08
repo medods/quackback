@@ -10,12 +10,10 @@ import {
 describe('normalizeLocale', () => {
   it('returns exact match for supported locale', () => {
     expect(normalizeLocale('en')).toBe('en')
-    expect(normalizeLocale('de')).toBe('de')
     expect(normalizeLocale('ru')).toBe('ru')
   })
   it('strips region to find base locale', () => {
-    expect(normalizeLocale('fr-FR')).toBe('fr')
-    expect(normalizeLocale('de-AT')).toBe('de')
+    expect(normalizeLocale('en-US')).toBe('en')
     expect(normalizeLocale('ru-RU')).toBe('ru')
   })
   it('returns null for locales without message catalogs', () => {
@@ -28,7 +26,7 @@ describe('normalizeLocale', () => {
   })
   it('handles case insensitivity', () => {
     expect(normalizeLocale('EN')).toBe('en')
-    expect(normalizeLocale('FR-fr')).toBe('fr')
+    expect(normalizeLocale('RU-ru')).toBe('ru')
   })
   it('returns null for empty or invalid input', () => {
     expect(normalizeLocale('')).toBeNull()
@@ -38,8 +36,7 @@ describe('normalizeLocale', () => {
 
 describe('resolveLocale', () => {
   it('returns first supported locale from Accept-Language header', () => {
-    expect(resolveLocale('fr-FR,fr;q=0.9,en;q=0.8')).toBe('fr')
-    expect(resolveLocale('de,en;q=0.5')).toBe('de')
+    expect(resolveLocale('en-US,en;q=0.9,ru;q=0.8')).toBe('en')
     expect(resolveLocale('ru-RU,ru;q=0.9,en;q=0.8')).toBe('ru')
   })
   it('falls back to default when no supported locale found', () => {
@@ -48,13 +45,13 @@ describe('resolveLocale', () => {
     expect(resolveLocale(null)).toBe('en')
   })
   it('respects quality weights', () => {
-    expect(resolveLocale('en;q=0.5,de;q=0.9')).toBe('de')
+    expect(resolveLocale('en;q=0.5,ru;q=0.9')).toBe('ru')
   })
   it('returns explicit locale when provided', () => {
-    expect(resolveLocale('de,en;q=0.5', 'fr')).toBe('fr')
+    expect(resolveLocale('en;q=0.5', 'ru')).toBe('ru')
   })
   it('falls back to header when explicit locale is unsupported', () => {
-    expect(resolveLocale('de,en;q=0.5', 'zz')).toBe('de')
+    expect(resolveLocale('ru,en;q=0.5', 'zz')).toBe('ru')
   })
 })
 
@@ -67,8 +64,7 @@ describe('isRtlLocale', () => {
   })
   it('returns false for LTR locales', () => {
     expect(isRtlLocale('en')).toBe(false)
-    expect(isRtlLocale('fr')).toBe(false)
-    expect(isRtlLocale('de')).toBe(false)
+    expect(isRtlLocale('ru')).toBe(false)
   })
 })
 
@@ -78,6 +74,9 @@ describe('SUPPORTED_LOCALES', () => {
   })
   it('includes ru', () => {
     expect(SUPPORTED_LOCALES).toContain('ru')
+  })
+  it('contains only en and ru', () => {
+    expect(SUPPORTED_LOCALES).toEqual(['en', 'ru'])
   })
   it('DEFAULT_LOCALE is en', () => {
     expect(DEFAULT_LOCALE).toBe('en')
