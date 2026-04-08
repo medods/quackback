@@ -114,9 +114,13 @@ const lowlight = createLowlight(common)
  */
 export function buildExtensions(
   features: EditorFeatures,
-  options: { placeholder: string; onImageUpload?: (file: File) => Promise<string> }
+  options: {
+    placeholder: string
+    onImageUpload?: (file: File) => Promise<string>
+    defaultImageWidth?: number
+  }
 ) {
-  const { placeholder, onImageUpload } = options
+  const { placeholder, onImageUpload, defaultImageWidth } = options
   return [
     StarterKit.configure({
       heading: features.headings ? { levels: [1, 2, 3] } : false,
@@ -200,7 +204,9 @@ export function buildExtensions(
           }),
         ]
       : []),
-    ...(features.slashMenu !== false ? [createSlashCommands(features, onImageUpload)] : []),
+    ...(features.slashMenu !== false
+      ? [createSlashCommands(features, onImageUpload, defaultImageWidth)]
+      : []),
     Markdown,
   ]
 }
@@ -249,9 +255,25 @@ interface SlashMenuItem {
   group: 'text' | 'lists' | 'blocks' | 'advanced'
 }
 
+type InsertedImageAttrs = {
+  src: string
+  'data-keep-ratio': true
+  width?: number
+}
+
+function buildInsertedImageAttrs(src: string, defaultImageWidth?: number): InsertedImageAttrs {
+  const width = Number(defaultImageWidth)
+  return {
+    src,
+    'data-keep-ratio': true,
+    ...(Number.isFinite(width) && width > 0 ? { width } : {}),
+  }
+}
+
 function getSlashMenuItems(
   features: EditorFeatures,
-  onImageUpload?: (file: File) => Promise<string>
+  onImageUpload?: (file: File) => Promise<string>,
+  defaultImageWidth?: number
 ): SlashMenuItem[] {
   const items: SlashMenuItem[] = [
     // Text group - always available
@@ -401,7 +423,7 @@ function getSlashMenuItems(
           try {
             const src = await onImageUpload(file)
             // Use setResizableImage for the resizable image extension
-            editor.commands.setResizableImage({ src, 'data-keep-ratio': true })
+            editor.commands.setResizableImage(buildInsertedImageAttrs(src, defaultImageWidth))
           } catch (error) {
             console.error('Failed to upload image:', error)
           }
@@ -621,12 +643,13 @@ SlashMenuList.displayName = 'SlashMenuList'
 // Create the slash commands extension
 function createSlashCommands(
   features: EditorFeatures,
-  onImageUpload?: (file: File) => Promise<string>
+  onImageUpload?: (file: File) => Promise<string>,
+  defaultImageWidth?: number
 ) {
   // Compute once per extension instance. Since buildExtensions() is wrapped in
   // useMemo, this only re-runs when features or onImageUpload actually changes —
   // NOT on every keystroke.
-  const allItems = getSlashMenuItems(features, onImageUpload)
+  const allItems = getSlashMenuItems(features, onImageUpload, defaultImageWidth)
 
   return Extension.create({
     name: 'slashCommands',
@@ -750,6 +773,7 @@ interface RichTextEditorProps {
   borderless?: boolean
   toolbarPosition?: 'top' | 'none'
   toolbarVariant?: 'default' | 'media-history'
+  defaultImageWidth?: number
   /** Feature flags for enabling advanced features */
   features?: EditorFeatures
   /** Callback for uploading images. Returns the public URL of the uploaded image. */
@@ -770,6 +794,7 @@ function RichTextEditorBase({
   borderless = false,
   toolbarPosition = borderless ? 'none' : 'top',
   toolbarVariant = 'default',
+  defaultImageWidth,
   features = {},
   onImageUpload,
 }: RichTextEditorProps) {
@@ -779,7 +804,7 @@ function RichTextEditorBase({
   // Rebuilding the array on every render causes setOptions→transaction→onUpdate
   // on every keystroke, resulting in 300–400 ms input violations.
   const extensions = useMemo(
-    () => buildExtensions(features, { placeholder, onImageUpload }),
+    () => buildExtensions(features, { placeholder, onImageUpload, defaultImageWidth }),
 
     [
       features.headings,
@@ -792,6 +817,7 @@ function RichTextEditorBase({
       features.embeds,
       features.slashMenu,
       onImageUpload,
+      defaultImageWidth,
       placeholder,
     ]
   )
@@ -808,11 +834,17 @@ function RichTextEditorBase({
         ),
         style: `--editor-min-height: ${minHeight}`,
       },
-      handleDrop: features.images && onImageUpload ? handleImageDrop(onImageUpload) : undefined,
-      handlePaste: features.images && onImageUpload ? handleImagePaste(onImageUpload) : undefined,
+      handleDrop:
+        features.images && onImageUpload
+          ? handleImageDrop(onImageUpload, defaultImageWidth)
+          : undefined,
+      handlePaste:
+        features.images && onImageUpload
+          ? handleImagePaste(onImageUpload, defaultImageWidth)
+          : undefined,
     }),
 
-    [features.images, onImageUpload, borderless, minHeight]
+    [features.images, onImageUpload, defaultImageWidth, borderless, minHeight]
   )
 
   // Stores the last JSON emitted by onUpdate so the value-sync useEffect can
@@ -936,6 +968,7 @@ function RichTextEditorBase({
               features={features}
               onImageUpload={onImageUpload}
               toolbarVariant={toolbarVariant}
+              defaultImageWidth={defaultImageWidth}
             />
           )}
 
@@ -1033,6 +1066,7 @@ export const RichTextEditor = memo(RichTextEditorBase, (prev, next) => {
     prev.borderless !== next.borderless ||
     prev.toolbarPosition !== next.toolbarPosition ||
     prev.toolbarVariant !== next.toolbarVariant ||
+    prev.defaultImageWidth !== next.defaultImageWidth ||
     prev.className !== next.className
   )
     return false
@@ -1060,7 +1094,8 @@ export const RichTextEditor = memo(RichTextEditorBase, (prev, next) => {
  * Handle image drop events in the editor.
  */
 function handleImageDrop(
-  onImageUpload: (file: File) => Promise<string>
+  onImageUpload: (file: File) => Promise<string>,
+  defaultImageWidth?: number
 ): (
   view: import('@tiptap/pm/view').EditorView,
   event: DragEvent,
@@ -1090,7 +1125,7 @@ function handleImageDrop(
         .then((src) => {
           // Use resizableImage node type for resizable images
           const nodeType = schema.nodes.resizableImage || schema.nodes.image
-          const node = nodeType?.create({ src, 'data-keep-ratio': true })
+          const node = nodeType?.create(buildInsertedImageAttrs(src, defaultImageWidth))
           if (node && coordinates) {
             const transaction = view.state.tr.insert(coordinates.pos, node)
             view.dispatch(transaction)
@@ -1109,7 +1144,8 @@ function handleImageDrop(
  * Handle image paste events in the editor.
  */
 function handleImagePaste(
-  onImageUpload: (file: File) => Promise<string>
+  onImageUpload: (file: File) => Promise<string>,
+  defaultImageWidth?: number
 ): (view: import('@tiptap/pm/view').EditorView, event: ClipboardEvent, slice: unknown) => boolean {
   return (view, event) => {
     const items = Array.from(event.clipboardData?.items ?? [])
@@ -1130,7 +1166,7 @@ function handleImagePaste(
           const { schema } = view.state
           // Use resizableImage node type for resizable images
           const nodeType = schema.nodes.resizableImage || schema.nodes.image
-          const node = nodeType?.create({ src, 'data-keep-ratio': true })
+          const node = nodeType?.create(buildInsertedImageAttrs(src, defaultImageWidth))
           if (node) {
             const transaction = view.state.tr.replaceSelectionWith(node)
             view.dispatch(transaction)
@@ -1595,6 +1631,7 @@ interface MenuBarProps {
   features?: EditorFeatures
   onImageUpload?: (file: File) => Promise<string>
   toolbarVariant?: 'default' | 'media-history'
+  defaultImageWidth?: number
 }
 
 function MenuBar({
@@ -1603,6 +1640,7 @@ function MenuBar({
   features = {},
   onImageUpload,
   toolbarVariant = 'default',
+  defaultImageWidth,
 }: MenuBarProps) {
   const setLink = useCallback(() => {
     const previousUrl = editor.getAttributes('link').href
@@ -1635,13 +1673,13 @@ function MenuBar({
       try {
         const src = await onImageUpload(file)
         // Use setResizableImage for resizable images
-        editor.commands.setResizableImage({ src, 'data-keep-ratio': true })
+        editor.commands.setResizableImage(buildInsertedImageAttrs(src, defaultImageWidth))
       } catch (error) {
         console.error('Failed to upload image:', error)
       }
     }
     input.click()
-  }, [editor, onImageUpload])
+  }, [editor, onImageUpload, defaultImageWidth])
 
   const canUndo = editor.can().chain().focus().undo().run()
   const canRedo = editor.can().chain().focus().redo().run()

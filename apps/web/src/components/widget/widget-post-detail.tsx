@@ -226,7 +226,7 @@ export function WidgetPostDetail({
           <PostContent
             content={post.content}
             contentJson={post.contentJson}
-            className="text-[13px] text-foreground/80 leading-relaxed"
+            className="text-[13px] text-foreground/80 leading-relaxed [&_img]:max-w-[320px] [&_img]:h-auto"
           />
         )}
 

@@ -608,6 +608,7 @@ export function WidgetHome({
                       borderless
                       toolbarPosition="top"
                       toolbarVariant="media-history"
+                      defaultImageWidth={320}
                       features={{
                         images: canUploadImages,
                         bubbleMenu: false,

@@ -279,7 +279,7 @@ function WidgetCommentItem({
         {renderedContent ? (
           <RichTextContent
             content={renderedContent}
-            className="mt-1 ms-7 text-xs leading-relaxed text-foreground/90 [&_p]:my-0 [&_ul]:my-1 [&_ol]:my-1 [&_pre]:my-1 [&_blockquote]:my-1 [&_img]:my-1"
+            className="mt-1 ms-7 text-xs leading-relaxed text-foreground/90 [&_p]:my-0 [&_ul]:my-1 [&_ol]:my-1 [&_pre]:my-1 [&_blockquote]:my-1 [&_img]:my-1 [&_img]:max-w-[220px] [&_img]:h-auto"
           />
         ) : (
           <p className="text-xs text-foreground/90 whitespace-pre-wrap mt-1 ms-7 leading-relaxed">
@@ -387,6 +387,7 @@ function WidgetCommentItem({
                   disabled={isSubmitting}
                   className="flex-1 text-xs"
                   toolbarVariant="media-history"
+                  defaultImageWidth={220}
                   features={{
                     images: canUploadImages,
                     bubbleMenu: false,

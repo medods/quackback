@@ -111,6 +111,7 @@ export function WidgetCommentForm({
         disabled={isSubmitting}
         className="text-xs"
         toolbarVariant="media-history"
+        defaultImageWidth={220}
         features={{
           images: canUploadImages,
           bubbleMenu: false,
