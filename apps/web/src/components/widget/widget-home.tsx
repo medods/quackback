@@ -445,8 +445,8 @@ export function WidgetHome({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col h-full">
-      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin">
-        <div className="w-full px-3 pt-2 pb-3">
+      <div className="flex-1 min-h-0">
+        <div className="w-full h-full min-h-0 px-3 pt-2 pb-3 flex flex-col">
           <motion.div
             className="rounded-lg border border-border bg-card overflow-hidden"
             initial={false}
@@ -750,8 +750,8 @@ export function WidgetHome({
           </motion.div>
 
           {/* Popular ideas */}
-          <div className="mt-2">
-            <div className="flex items-center justify-between px-1 h-7">
+          <div className="mt-2 min-h-0 flex-1 flex flex-col">
+            <div className="flex items-center justify-between px-1 h-7 shrink-0">
               {popularSearchOpen ? (
                 <div className="flex items-center gap-1.5 flex-1 min-w-0">
                   <MagnifyingGlassIcon className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
@@ -867,42 +867,100 @@ export function WidgetHome({
               )}
             </div>
 
-            {isPopularSearchActive && (
-              <>
-                {(isPopularSearchFetching || popularSearch !== debouncedPopularSearch) && (
-                  <div className="flex justify-center py-4">
-                    <span className="text-[10px] text-muted-foreground/50">
-                      <FormattedMessage
-                        id="widget.home.popular.search.searching"
-                        defaultMessage="Searching..."
-                      />
-                    </span>
-                  </div>
-                )}
-                {!isPopularSearchFetching &&
-                  popularSearch === debouncedPopularSearch &&
-                  (popularSearchData?.posts.length ?? 0) === 0 && (
-                    <div className="flex flex-col items-center justify-center py-8 text-center">
-                      <MagnifyingGlassIcon className="w-8 h-8 text-muted-foreground/30 mb-2" />
-                      <p className="text-sm font-medium text-muted-foreground/70">
+            <div className="min-h-0 flex-1 overflow-y-auto scrollbar-thin">
+              {isPopularSearchActive && (
+                <>
+                  {(isPopularSearchFetching || popularSearch !== debouncedPopularSearch) && (
+                    <div className="flex justify-center py-4">
+                      <span className="text-[10px] text-muted-foreground/50">
                         <FormattedMessage
-                          id="widget.home.popular.search.noResults"
-                          defaultMessage="No ideas found"
+                          id="widget.home.popular.search.searching"
+                          defaultMessage="Searching..."
                         />
-                      </p>
-                      <p className="text-xs text-muted-foreground/50 mt-0.5">
-                        <FormattedMessage
-                          id="widget.home.popular.search.noResultsHint"
-                          defaultMessage="Try a different search term"
-                        />
-                      </p>
+                      </span>
                     </div>
                   )}
-                {!isPopularSearchFetching &&
-                  popularSearch === debouncedPopularSearch &&
-                  (popularSearchData?.posts.length ?? 0) > 0 && (
+                  {!isPopularSearchFetching &&
+                    popularSearch === debouncedPopularSearch &&
+                    (popularSearchData?.posts.length ?? 0) === 0 && (
+                      <div className="flex flex-col items-center justify-center py-8 text-center">
+                        <MagnifyingGlassIcon className="w-8 h-8 text-muted-foreground/30 mb-2" />
+                        <p className="text-sm font-medium text-muted-foreground/70">
+                          <FormattedMessage
+                            id="widget.home.popular.search.noResults"
+                            defaultMessage="No ideas found"
+                          />
+                        </p>
+                        <p className="text-xs text-muted-foreground/50 mt-0.5">
+                          <FormattedMessage
+                            id="widget.home.popular.search.noResultsHint"
+                            defaultMessage="Try a different search term"
+                          />
+                        </p>
+                      </div>
+                    )}
+                  {!isPopularSearchFetching &&
+                    popularSearch === debouncedPopularSearch &&
+                    (popularSearchData?.posts.length ?? 0) > 0 && (
+                      <div className="space-y-0.5">
+                        {popularSearchData!.posts.map((post) => (
+                          <WidgetPostRow
+                            key={post.id}
+                            post={post}
+                            statusMap={statusMap}
+                            showBoard
+                            canVote={canVote}
+                            ensureSessionThen={ensureSessionThen}
+                            onAuthRequired={() => handleAuthRequired(post.id)}
+                            onSelect={() => onPostSelect?.(post.id)}
+                          />
+                        ))}
+                      </div>
+                    )}
+                </>
+              )}
+
+              {!isPopularSearchActive && (
+                <>
+                  {isFetchingPosts && !isFetchingNextPage && allPopularPosts.length === 0 && (
+                    <div className="flex justify-center py-4">
+                      <span className="text-[10px] text-muted-foreground/50">
+                        <FormattedMessage
+                          id="widget.home.popular.loading"
+                          defaultMessage="Loading..."
+                        />
+                      </span>
+                    </div>
+                  )}
+                  {!isFetchingPosts && allPopularPosts.length === 0 && (
+                    <div className="flex flex-col items-center justify-center py-8 text-center">
+                      <LightBulbIcon className="w-8 h-8 text-muted-foreground/30 mb-2" />
+                      <p className="text-sm font-medium text-muted-foreground/70">
+                        {activeBoardSlug ? (
+                          <FormattedMessage
+                            id="widget.home.popular.emptyBoard"
+                            defaultMessage="No ideas in this board yet"
+                          />
+                        ) : (
+                          <FormattedMessage
+                            id="widget.home.popular.empty"
+                            defaultMessage="No ideas yet"
+                          />
+                        )}
+                      </p>
+                      {!activeBoardSlug && (
+                        <p className="text-xs text-muted-foreground/50 mt-0.5">
+                          <FormattedMessage
+                            id="widget.home.popular.emptyHint"
+                            defaultMessage="Be the first to share one!"
+                          />
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  {allPopularPosts.length > 0 && (
                     <div className="space-y-0.5">
-                      {popularSearchData!.posts.map((post) => (
+                      {allPopularPosts.map((post) => (
                         <WidgetPostRow
                           key={post.id}
                           post={post}
@@ -914,79 +972,23 @@ export function WidgetHome({
                           onSelect={() => onPostSelect?.(post.id)}
                         />
                       ))}
+                      {hasNextPage && (
+                        <div ref={postsSentinelRef} className="flex justify-center py-2">
+                          {isFetchingNextPage && (
+                            <span className="text-[10px] text-muted-foreground/50">
+                              <FormattedMessage
+                                id="widget.home.popular.loading"
+                                defaultMessage="Loading..."
+                              />
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
-              </>
-            )}
-
-            {!isPopularSearchActive && (
-              <>
-                {isFetchingPosts && !isFetchingNextPage && allPopularPosts.length === 0 && (
-                  <div className="flex justify-center py-4">
-                    <span className="text-[10px] text-muted-foreground/50">
-                      <FormattedMessage
-                        id="widget.home.popular.loading"
-                        defaultMessage="Loading..."
-                      />
-                    </span>
-                  </div>
-                )}
-                {!isFetchingPosts && allPopularPosts.length === 0 && (
-                  <div className="flex flex-col items-center justify-center py-8 text-center">
-                    <LightBulbIcon className="w-8 h-8 text-muted-foreground/30 mb-2" />
-                    <p className="text-sm font-medium text-muted-foreground/70">
-                      {activeBoardSlug ? (
-                        <FormattedMessage
-                          id="widget.home.popular.emptyBoard"
-                          defaultMessage="No ideas in this board yet"
-                        />
-                      ) : (
-                        <FormattedMessage
-                          id="widget.home.popular.empty"
-                          defaultMessage="No ideas yet"
-                        />
-                      )}
-                    </p>
-                    {!activeBoardSlug && (
-                      <p className="text-xs text-muted-foreground/50 mt-0.5">
-                        <FormattedMessage
-                          id="widget.home.popular.emptyHint"
-                          defaultMessage="Be the first to share one!"
-                        />
-                      </p>
-                    )}
-                  </div>
-                )}
-                {allPopularPosts.length > 0 && (
-                  <div className="space-y-0.5">
-                    {allPopularPosts.map((post) => (
-                      <WidgetPostRow
-                        key={post.id}
-                        post={post}
-                        statusMap={statusMap}
-                        showBoard
-                        canVote={canVote}
-                        ensureSessionThen={ensureSessionThen}
-                        onAuthRequired={() => handleAuthRequired(post.id)}
-                        onSelect={() => onPostSelect?.(post.id)}
-                      />
-                    ))}
-                    {hasNextPage && (
-                      <div ref={postsSentinelRef} className="flex justify-center py-2">
-                        {isFetchingNextPage && (
-                          <span className="text-[10px] text-muted-foreground/50">
-                            <FormattedMessage
-                              id="widget.home.popular.loading"
-                              defaultMessage="Loading..."
-                            />
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </>
-            )}
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>
