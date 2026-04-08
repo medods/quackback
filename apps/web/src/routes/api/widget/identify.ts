@@ -39,13 +39,21 @@ function jsonError(code: string, message: string, status: number): Response {
   return Response.json({ error: { code, message } }, { status })
 }
 
-async function findSessionUserIdFromToken(token: string): Promise<UserId | null> {
+async function findAnonymousSessionUserIdFromToken(token: string): Promise<UserId | null> {
   for (const candidate of getSessionTokenCandidates(token)) {
     const found = await db.query.session.findFirst({
       where: and(eq(session.token, candidate), gt(session.expiresAt, new Date())),
       columns: { userId: true },
     })
-    if (found?.userId) return found.userId as UserId
+    if (!found?.userId) continue
+
+    const ownerPrincipal = await db.query.principal.findFirst({
+      where: eq(principal.userId, found.userId as UserId),
+      columns: { type: true },
+    })
+    if (ownerPrincipal?.type === 'anonymous') {
+      return found.userId as UserId
+    }
   }
   return null
 }
@@ -240,7 +248,7 @@ export const Route = createFileRoute('/api/widget/identify')({
             ? body.previousToken
             : null
         const sessionHintUserId = ownedPreviousToken
-          ? await findSessionUserIdFromToken(ownedPreviousToken)
+          ? await findAnonymousSessionUserIdFromToken(ownedPreviousToken)
           : null
 
         // Find or create user with externalId as primary identity key.

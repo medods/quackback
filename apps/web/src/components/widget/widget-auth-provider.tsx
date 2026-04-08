@@ -75,6 +75,8 @@ export function WidgetAuthProvider({
 }: WidgetAuthProviderProps) {
   const queryClient = useQueryClient()
   const [user, setUser] = useState<WidgetUser | null>(null)
+  const userRef = useRef<WidgetUser | null>(null)
+  userRef.current = user
   const [sessionVersion, setSessionVersion] = useState(0)
   const isIdentified = user !== null
   const sessionReadyRef = useRef(false)
@@ -228,9 +230,11 @@ export function WidgetAuthProvider({
   useEffect(() => {
     async function handleIdentify(data: Record<string, unknown>) {
       try {
-        // Capture current token before the identify call — if it's an anonymous
-        // session, the server will merge its activity into the newly identified user.
-        const previousToken = getWidgetToken()
+        // Carry previousToken only for widget-owned anonymous sessions.
+        // Portal-provided session tokens can contain long-lived anonymous history
+        // and should not be auto-merged during SDK identify.
+        const shouldCarryPreviousToken = !userRef.current && sessionSourceRef.current !== 'portal'
+        const previousToken = shouldCarryPreviousToken ? getWidgetToken() : null
         const payload = previousToken ? { ...data, previousToken } : data
 
         // Send previousToken as Bearer header too — the server verifies ownership
