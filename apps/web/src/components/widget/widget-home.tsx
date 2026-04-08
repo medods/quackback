@@ -607,17 +607,11 @@ export function WidgetHome({
                       minHeight="80px"
                       borderless
                       toolbarPosition="top"
+                      toolbarVariant="media-history"
                       features={{
-                        headings: true,
-                        codeBlocks: true,
-                        taskLists: true,
-                        blockquotes: true,
-                        dividers: true,
-                        tables: true,
                         images: canUploadImages,
-                        embeds: true,
-                        bubbleMenu: true,
-                        slashMenu: true,
+                        bubbleMenu: false,
+                        slashMenu: false,
                       }}
                       onImageUpload={canUploadImages ? uploadImage : undefined}
                       className="text-sm"

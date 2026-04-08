@@ -749,6 +749,7 @@ interface RichTextEditorProps {
   minHeight?: string
   borderless?: boolean
   toolbarPosition?: 'top' | 'none'
+  toolbarVariant?: 'default' | 'media-history'
   /** Feature flags for enabling advanced features */
   features?: EditorFeatures
   /** Callback for uploading images. Returns the public URL of the uploaded image. */
@@ -768,6 +769,7 @@ function RichTextEditorBase({
   minHeight = '120px',
   borderless = false,
   toolbarPosition = borderless ? 'none' : 'top',
+  toolbarVariant = 'default',
   features = {},
   onImageUpload,
 }: RichTextEditorProps) {
@@ -933,6 +935,7 @@ function RichTextEditorBase({
               disabled={disabled}
               features={features}
               onImageUpload={onImageUpload}
+              toolbarVariant={toolbarVariant}
             />
           )}
 
@@ -1029,6 +1032,7 @@ export const RichTextEditor = memo(RichTextEditorBase, (prev, next) => {
     prev.minHeight !== next.minHeight ||
     prev.borderless !== next.borderless ||
     prev.toolbarPosition !== next.toolbarPosition ||
+    prev.toolbarVariant !== next.toolbarVariant ||
     prev.className !== next.className
   )
     return false
@@ -1590,9 +1594,16 @@ interface MenuBarProps {
   disabled: boolean
   features?: EditorFeatures
   onImageUpload?: (file: File) => Promise<string>
+  toolbarVariant?: 'default' | 'media-history'
 }
 
-function MenuBar({ editor, disabled, features = {}, onImageUpload }: MenuBarProps) {
+function MenuBar({
+  editor,
+  disabled,
+  features = {},
+  onImageUpload,
+  toolbarVariant = 'default',
+}: MenuBarProps) {
   const setLink = useCallback(() => {
     const previousUrl = editor.getAttributes('link').href
     let url = window.prompt('URL', previousUrl)
@@ -1634,6 +1645,34 @@ function MenuBar({ editor, disabled, features = {}, onImageUpload }: MenuBarProp
 
   const canUndo = editor.can().chain().focus().undo().run()
   const canRedo = editor.can().chain().focus().redo().run()
+
+  if (toolbarVariant === 'media-history') {
+    return (
+      <div className="flex items-center gap-1 flex-wrap px-2 py-1.5 border-b border-input bg-muted/30">
+        {features.images && onImageUpload && (
+          <ToolbarButton
+            icon={<ImagePlus className="size-4" />}
+            onClick={insertImage}
+            disabled={disabled}
+            title="Insert Image"
+          />
+        )}
+        <div className="flex-1" />
+        <ToolbarButton
+          icon={<ArrowUturnLeftIcon className="size-4" />}
+          onClick={() => editor.chain().focus().undo().run()}
+          disabled={disabled || !canUndo}
+          title="Undo"
+        />
+        <ToolbarButton
+          icon={<ArrowUturnRightIcon className="size-4" />}
+          onClick={() => editor.chain().focus().redo().run()}
+          disabled={disabled || !canRedo}
+          title="Redo"
+        />
+      </div>
+    )
+  }
 
   return (
     <div className="flex items-center gap-1 flex-wrap px-2 py-1.5 border-b border-input bg-muted/30">

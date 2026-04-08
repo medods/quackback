@@ -386,17 +386,11 @@ function WidgetCommentItem({
                   minHeight="64px"
                   disabled={isSubmitting}
                   className="flex-1 text-xs"
+                  toolbarVariant="media-history"
                   features={{
-                    headings: true,
-                    codeBlocks: true,
-                    taskLists: true,
-                    blockquotes: true,
-                    dividers: true,
-                    tables: true,
                     images: canUploadImages,
-                    embeds: true,
-                    bubbleMenu: true,
-                    slashMenu: true,
+                    bubbleMenu: false,
+                    slashMenu: false,
                   }}
                   onImageUpload={canUploadImages ? onImageUpload : undefined}
                 />
