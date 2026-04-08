@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
-import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CheckCircleIcon } from '@heroicons/react/24/solid'
 import { ArrowLeftIcon } from '@heroicons/react/24/outline'
 import { WidgetVoteButton } from '@/components/widget/widget-vote-button'
@@ -14,7 +14,7 @@ import { WidgetHelp } from '@/components/widget/widget-help'
 import { WidgetHelpDetail } from '@/components/widget/widget-help-detail'
 import { useWidgetAuth } from '@/components/widget/widget-auth-provider'
 import { portalQueries } from '@/lib/client/queries/portal'
-import { widgetQueryKeys, INITIAL_SESSION_VERSION } from '@/lib/client/hooks/use-widget-vote'
+import { INITIAL_SESSION_VERSION, widgetQueryKeys } from '@/lib/client/hooks/use-widget-vote'
 import type { WidgetRoute } from '@/lib/shared/widget/types'
 
 const searchSchema = z.object({
@@ -100,6 +100,8 @@ interface WidgetOpenMessageData {
   view?: string
   postId?: string
   changelogId?: string
+  sort?: string
+  board?: string
   __fromRouteSync?: boolean
 }
 
@@ -118,6 +120,8 @@ function WidgetPage() {
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null)
   const [selectedChangelogId, setSelectedChangelogId] = useState<string | null>(null)
   const [selectedHelpSlug, setSelectedHelpSlug] = useState<string | null>(null)
+  const [selectedSort, setSelectedSort] = useState<string | null>(null)
+  const [selectedBoard, setSelectedBoard] = useState<string | null>(null)
   const [createdPosts, setCreatedPosts] = useState<typeof posts>([])
   const suppressNextRouteSyncRef = useRef(false)
 
@@ -154,6 +158,7 @@ function WidgetPage() {
         if (tabs.feedback && typeof opts.postId === 'string' && opts.postId.length > 0) {
           setActiveTab('feedback')
           setSelectedPostId(opts.postId)
+          if (opts.board) setSelectedBoard(opts.board)
           setView('post-detail')
         } else {
           setDefaultView()
@@ -176,6 +181,7 @@ function WidgetPage() {
         if (tabs.changelog) {
           setActiveTab('changelog')
           setSelectedChangelogId(null)
+          if (opts.sort) setSelectedSort(opts.sort)
           setView('changelog')
         } else {
           setDefaultView()
@@ -188,6 +194,11 @@ function WidgetPage() {
         setSelectedHelpSlug(null)
         setView('help')
         return
+      }
+
+      if (opts.view === 'home') {
+        if (opts.sort) setSelectedSort(opts.sort)
+        if (opts.board) setSelectedBoard(opts.board)
       }
 
       setDefaultView()
@@ -215,15 +226,23 @@ function WidgetPage() {
 
     const route: WidgetRoute =
       view === 'post-detail' && selectedPostId
-        ? { view: 'post-detail', postId: selectedPostId }
+        ? {
+            view: 'post-detail',
+            postId: selectedPostId,
+            ...(selectedBoard ? { board: selectedBoard } : {}),
+          }
         : view === 'changelog-detail' && selectedChangelogId
           ? { view: 'changelog-detail', changelogId: selectedChangelogId }
           : view === 'changelog'
-            ? { view: 'changelog' }
-            : { view: 'home' }
+            ? { view: 'changelog', ...(selectedSort ? { sort: selectedSort } : {}) }
+            : {
+                view: 'home',
+                ...(selectedSort ? { sort: selectedSort } : {}),
+                ...(selectedBoard ? { board: selectedBoard } : {}),
+              }
 
     window.parent.postMessage({ type: 'quackback:route-change', data: route }, '*')
-  }, [view, selectedPostId, selectedChangelogId])
+  }, [view, selectedPostId, selectedChangelogId, selectedSort, selectedBoard])
 
   const handlePostCreated = useCallback((post: SuccessPost) => {
     setCreatedPosts((prev) => [
@@ -328,6 +347,10 @@ function WidgetPage() {
           anonymousVotingEnabled={features.anonymousVoting}
           anonymousPostingEnabled={features.anonymousPosting}
           imageUploadsInWidget={imageUploadsInWidget}
+          initialSort={selectedSort ?? undefined}
+          initialBoardSlug={selectedBoard ?? undefined}
+          onSortChange={setSelectedSort}
+          onBoardChange={setSelectedBoard}
         />
       </div>
 

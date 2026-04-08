@@ -36,9 +36,9 @@ export interface WidgetEventMap {
 export type WidgetEventName = keyof WidgetEventMap
 
 export type WidgetRoute =
-  | { view: 'home' }
-  | { view: 'post-detail'; postId: string }
-  | { view: 'changelog' }
+  | { view: 'home'; sort?: string; board?: string }
+  | { view: 'post-detail'; postId: string; board?: string }
+  | { view: 'changelog'; sort?: string }
   | { view: 'changelog-detail'; changelogId: string }
 
 // ---- SDK -> Iframe Messages ----

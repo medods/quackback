@@ -60,6 +60,10 @@ interface WidgetHomeProps {
   anonymousVotingEnabled?: boolean
   anonymousPostingEnabled?: boolean
   imageUploadsInWidget?: boolean
+  initialSort?: string
+  initialBoardSlug?: string
+  onSortChange?: (sort: string) => void
+  onBoardChange?: (boardSlug: string | null) => void
 }
 
 interface SearchResult {
@@ -165,6 +169,10 @@ export function WidgetHome({
   anonymousVotingEnabled = true,
   anonymousPostingEnabled = false,
   imageUploadsInWidget = true,
+  initialSort,
+  initialBoardSlug,
+  onSortChange,
+  onBoardChange,
 }: WidgetHomeProps) {
   const intl = useIntl()
   const queryClient = useQueryClient()
@@ -203,8 +211,19 @@ export function WidgetHome({
   const [similarPostResults, setSimilarPostResults] = useState<SearchResult | null>(null)
   const [isSimilarSearching, setIsSimilarSearching] = useState(false)
   const similarDebounceRef = useRef<ReturnType<typeof setTimeout>>(null)
-  const [activeBoardSlug, setActiveBoardSlug] = useState<string | null>(null)
-  const [popularSort, setPopularSort] = useState<WidgetPopularSort>('top')
+  const [activeBoardSlug, setActiveBoardSlug] = useState<string | null>(initialBoardSlug ?? null)
+  const [popularSort, setPopularSort] = useState<WidgetPopularSort>(
+    (initialSort as WidgetPopularSort) ?? 'top'
+  )
+
+  useEffect(() => {
+    if (initialSort) setPopularSort(initialSort as WidgetPopularSort)
+  }, [initialSort])
+
+  useEffect(() => {
+    setActiveBoardSlug(initialBoardSlug ?? null)
+  }, [initialBoardSlug])
+
   const [popularSearch, setPopularSearch] = useState('')
   const [debouncedPopularSearch, setDebouncedPopularSearch] = useState('')
   const popularSearchDebounceRef = useRef<ReturnType<typeof setTimeout>>(null)
@@ -805,7 +824,11 @@ export function WidgetHome({
                   <div className="flex items-center gap-1 min-w-0 flex-1">
                     <Select
                       value={popularSort}
-                      onValueChange={(value) => setPopularSort(value as WidgetPopularSort)}
+                      onValueChange={(value) => {
+                        const sort = value as WidgetPopularSort
+                        setPopularSort(sort)
+                        onSortChange?.(sort)
+                      }}
                     >
                       <SelectTrigger
                         size="xs"
@@ -849,9 +872,11 @@ export function WidgetHome({
                     {boards.length >= 2 && (
                       <Select
                         value={activeBoardSlug ?? 'all'}
-                        onValueChange={(value) =>
-                          setActiveBoardSlug(value === 'all' ? null : value)
-                        }
+                        onValueChange={(value) => {
+                          const slug = value === 'all' ? null : value
+                          setActiveBoardSlug(slug)
+                          onBoardChange?.(slug)
+                        }}
                       >
                         <SelectTrigger
                           size="xs"

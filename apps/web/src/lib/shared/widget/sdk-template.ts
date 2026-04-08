@@ -120,12 +120,27 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
     if (!route || typeof route !== "object") return null;
 
     var view = route.view;
-    if (view === "home") return { view: "home" };
-    if (view === "changelog") return { view: "changelog" };
+    var sort = asNonEmptyString(route.sort);
+    var board = asNonEmptyString(route.board);
+
+    if (view === "home") {
+      var r = { view: "home" };
+      if (sort) r.sort = sort;
+      if (board) r.board = board;
+      return r;
+    }
+    if (view === "changelog") {
+      var r = { view: "changelog" };
+      if (sort) r.sort = sort;
+      return r;
+    }
 
     if (view === "post-detail") {
       var postId = asNonEmptyString(route.postId);
-      return postId ? { view: "post-detail", postId: postId } : { view: "home" };
+      if (!postId) return { view: "home" };
+      var r = { view: "post-detail", postId: postId };
+      if (board) r.board = board;
+      return r;
     }
 
     if (view === "changelog-detail") {
@@ -140,23 +155,32 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
 
   function getRouteKey(route) {
     if (!route) return "";
-    if (route.view === "post-detail") return "post-detail:" + route.postId;
+    if (route.view === "post-detail") return "post-detail:" + route.postId + ":" + (route.board || "");
     if (route.view === "changelog-detail") return "changelog-detail:" + route.changelogId;
+    if (route.view === "home") return "home:" + (route.sort || "") + ":" + (route.board || "");
+    if (route.view === "changelog") return "changelog:" + (route.sort || "");
     return route.view;
   }
 
   function routeToOpenOptions(route) {
     if (!route) return null;
     if (route.view === "post-detail") {
-      return { view: "post-detail", postId: route.postId, __fromRouteSync: true };
+      var o = { view: "post-detail", postId: route.postId, __fromRouteSync: true };
+      if (route.board) o.board = route.board;
+      return o;
     }
     if (route.view === "changelog") {
-      return { view: "changelog", __fromRouteSync: true };
+      var o = { view: "changelog", __fromRouteSync: true };
+      if (route.sort) o.sort = route.sort;
+      return o;
     }
     if (route.view === "changelog-detail") {
       return { view: "changelog-detail", changelogId: route.changelogId, __fromRouteSync: true };
     }
-    return { view: "home", __fromRouteSync: true };
+    var o = { view: "home", __fromRouteSync: true };
+    if (route.sort) o.sort = route.sort;
+    if (route.board) o.board = route.board;
+    return o;
   }
 
   function readDefaultRoute() {
@@ -168,6 +192,8 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
       view: view,
       postId: params.get("qb_postId"),
       changelogId: params.get("qb_changelogId"),
+      sort: params.get("qb_sort"),
+      board: params.get("qb_board"),
     });
   }
 
@@ -179,6 +205,8 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
     url.searchParams.delete("qb_page");
     url.searchParams.delete("qb_postId");
     url.searchParams.delete("qb_changelogId");
+    url.searchParams.delete("qb_sort");
+    url.searchParams.delete("qb_board");
     url.searchParams.set("qb_page", normalized.view);
 
     if (normalized.view === "post-detail") {
@@ -187,6 +215,14 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
 
     if (normalized.view === "changelog-detail") {
       url.searchParams.set("qb_changelogId", normalized.changelogId);
+    }
+
+    if (normalized.sort) {
+      url.searchParams.set("qb_sort", normalized.sort);
+    }
+
+    if (normalized.board) {
+      url.searchParams.set("qb_board", normalized.board);
     }
 
     window.history.replaceState(window.history.state, "", url.toString());
