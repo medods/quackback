@@ -17,6 +17,7 @@
   "widget.home.posting.emailRequired": "Укажите email",
   "widget.home.form.emailPlaceholder": "Ваш email",
   "widget.home.form.namePlaceholder": "Имя (необязательно)",
+  "widget.home.form.newRequest": "Новый запрос",
   "widget.home.form.cancel": "Отмена",
   "widget.home.form.submit": "Отправить",
   "widget.home.form.submitting": "Отправка...",

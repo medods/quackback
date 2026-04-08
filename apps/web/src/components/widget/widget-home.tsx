@@ -574,6 +574,28 @@ export function WidgetHome({
                 }}
                 transition={{ duration: 0.2 }}
               />
+
+              <AnimatePresence>
+                {!expanded && (
+                  <motion.button
+                    type="button"
+                    initial={{ opacity: 0, x: 8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 8 }}
+                    transition={{ duration: 0.2 }}
+                    className="shrink-0 px-2.5 py-1 text-[11px] font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                    onClick={() => {
+                      setExpanded(true)
+                      requestAnimationFrame(() => inputRef.current?.focus())
+                    }}
+                  >
+                    <FormattedMessage
+                      id="widget.home.form.newRequest"
+                      defaultMessage="New request"
+                    />
+                  </motion.button>
+                )}
+              </AnimatePresence>
             </div>
 
             <AnimatePresence>

@@ -17,6 +17,7 @@
   "widget.home.posting.emailRequired": "Ihre E-Mail-Adresse ist erforderlich",
   "widget.home.form.emailPlaceholder": "Ihre E-Mail-Adresse",
   "widget.home.form.namePlaceholder": "Name (optional)",
+  "widget.home.form.newRequest": "Neue Anfrage",
   "widget.home.form.cancel": "Abbrechen",
   "widget.home.form.submit": "Absenden",
   "widget.home.form.submitting": "Wird gesendet...",

@@ -17,6 +17,7 @@
   "widget.home.posting.emailRequired": "Tu correo electrónico es obligatorio",
   "widget.home.form.emailPlaceholder": "Tu correo electrónico",
   "widget.home.form.namePlaceholder": "Nombre (opcional)",
+  "widget.home.form.newRequest": "Nueva solicitud",
   "widget.home.form.cancel": "Cancelar",
   "widget.home.form.submit": "Enviar",
   "widget.home.form.submitting": "Enviando...",

@@ -17,6 +17,7 @@
   "widget.home.posting.emailRequired": "بريدك الإلكتروني مطلوب",
   "widget.home.form.emailPlaceholder": "بريدك الإلكتروني",
   "widget.home.form.namePlaceholder": "الاسم (اختياري)",
+  "widget.home.form.newRequest": "طلب جديد",
   "widget.home.form.cancel": "إلغاء",
   "widget.home.form.submit": "إرسال",
   "widget.home.form.submitting": "جارٍ الإرسال...",
