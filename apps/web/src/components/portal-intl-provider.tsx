@@ -12,7 +12,15 @@ export function PortalIntlProvider({ locale, children }: PortalIntlProviderProps
   const messages = useIntlSetup(locale)
 
   return (
-    <IntlProvider locale={locale} messages={messages} defaultLocale={DEFAULT_LOCALE}>
+    <IntlProvider
+      locale={locale}
+      messages={messages}
+      defaultLocale={DEFAULT_LOCALE}
+      onError={(err) => {
+        if (err.code === 'MISSING_TRANSLATION' && Object.keys(messages).length === 0) return
+        console.error(err)
+      }}
+    >
       {children}
     </IntlProvider>
   )

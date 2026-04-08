@@ -469,7 +469,8 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
     var placement = (config && config.placement) || "right";
     var boardParam = config && config.defaultBoard ? "board=" + encodeURIComponent(config.defaultBoard) : "";
     var closeParam = config && config.trigger === false ? "showClose=1" : "";
-    var queryParts = [boardParam, closeParam].filter(Boolean);
+    var localeParam = config && config.locale ? "locale=" + encodeURIComponent(config.locale) : "";
+    var queryParts = [boardParam, closeParam, localeParam].filter(Boolean);
     var iframeUrl = WIDGET_URL + (queryParts.length ? "?" + queryParts.join("&") : "");
 
     // Panel container

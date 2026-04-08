@@ -1,22 +1,22 @@
 import {
   createContext,
+  type ReactNode,
   useCallback,
   useContext,
   useEffect,
   useMemo,
   useRef,
   useState,
-  type ReactNode,
 } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { IntlProvider } from 'react-intl'
-import { setWidgetToken, clearWidgetToken, getWidgetToken } from '@/lib/client/widget-auth'
+import { clearWidgetToken, getWidgetToken, setWidgetToken } from '@/lib/client/widget-auth'
 import { sendToHost } from '@/lib/client/widget-bridge'
 import { widgetQueryKeys } from '@/lib/client/hooks/use-widget-vote'
 import { authClient } from '@/lib/server/auth/client'
 import { resolveIdentifyAction, type SessionSource } from './identify-precedence'
-import type { WidgetMetadata, WidgetEventName, WidgetEventMap } from '@/lib/shared/widget/types'
-import { normalizeLocale, DEFAULT_LOCALE, type SupportedLocale } from '@/lib/shared/i18n'
+import type { WidgetEventMap, WidgetEventName, WidgetMetadata } from '@/lib/shared/widget/types'
+import { DEFAULT_LOCALE, normalizeLocale, type SupportedLocale } from '@/lib/shared/i18n'
 import { useIntlSetup } from '@/lib/client/hooks/use-intl-setup'
 
 interface WidgetUser {
@@ -86,9 +86,6 @@ export function WidgetAuthProvider({
   const [locale, setLocale] = useState<SupportedLocale>(() => {
     if (initialLocale) {
       return normalizeLocale(initialLocale) ?? DEFAULT_LOCALE
-    }
-    if (typeof navigator !== 'undefined') {
-      return normalizeLocale(navigator.language) ?? DEFAULT_LOCALE
     }
     return DEFAULT_LOCALE
   })
@@ -359,7 +356,15 @@ export function WidgetAuthProvider({
   )
 
   return (
-    <IntlProvider locale={locale} messages={messages} defaultLocale={DEFAULT_LOCALE}>
+    <IntlProvider
+      locale={locale}
+      messages={messages}
+      defaultLocale={DEFAULT_LOCALE}
+      onError={(err) => {
+        if (err.code === 'MISSING_TRANSLATION' && Object.keys(messages).length === 0) return
+        console.error(err)
+      }}
+    >
       <WidgetAuthContext.Provider value={contextValue}>{children}</WidgetAuthContext.Provider>
     </IntlProvider>
   )

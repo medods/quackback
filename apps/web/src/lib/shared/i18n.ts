@@ -1,4 +1,4 @@
-export const DEFAULT_LOCALE = 'en' as const
+export const DEFAULT_LOCALE = 'ru' as const
 
 export const SUPPORTED_LOCALES = ['en', 'ru'] as const
 
@@ -94,6 +94,7 @@ export const isRtlForced = (() => {
 })()
 
 const messageCache = new Map<SupportedLocale, Promise<Record<string, string>>>()
+const resolvedMessageCache = new Map<SupportedLocale, Record<string, string>>()
 
 /**
  * Dynamically imports the message catalog for the given locale.
@@ -105,19 +106,27 @@ export function loadMessages(locale: SupportedLocale): Promise<Record<string, st
   if (cached) return cached
 
   const promise = (async () => {
-    if (locale === DEFAULT_LOCALE) {
-      const messages = await import('../../locales/en.json')
-      return messages.default as Record<string, string>
-    }
     try {
       const messages = await import(`../../locales/${locale}.json`)
       return messages.default as Record<string, string>
     } catch {
-      const fallback = await import('../../locales/en.json')
+      const fallback = await import('../../locales/ru.json')
       return fallback.default as Record<string, string>
     }
   })()
 
-  messageCache.set(locale, promise)
-  return promise
+  const tracked = promise.then((msgs) => {
+    resolvedMessageCache.set(locale, msgs)
+    return msgs
+  })
+  messageCache.set(locale, tracked)
+  return tracked
+}
+
+/**
+ * Returns already-resolved messages for the given locale synchronously,
+ * or an empty object if they haven't been loaded yet.
+ */
+export function getResolvedMessages(locale: SupportedLocale): Record<string, string> {
+  return resolvedMessageCache.get(locale) ?? {}
 }

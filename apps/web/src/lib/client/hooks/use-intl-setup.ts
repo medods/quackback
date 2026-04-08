@@ -1,12 +1,20 @@
 import { useEffect, useState } from 'react'
-import { loadMessages, isRtlLocale, isRtlForced, type SupportedLocale } from '@/lib/shared/i18n'
+import {
+  getResolvedMessages,
+  isRtlForced,
+  isRtlLocale,
+  loadMessages,
+  type SupportedLocale,
+} from '@/lib/shared/i18n'
 
 /**
  * Shared hook that loads locale messages and sets `lang`/`dir` on <html>.
  * Used by both PortalIntlProvider and WidgetAuthProvider.
  */
 export function useIntlSetup(locale: SupportedLocale): Record<string, string> {
-  const [messages, setMessages] = useState<Record<string, string>>({})
+  const [messages, setMessages] = useState<Record<string, string>>(() =>
+    getResolvedMessages(locale)
+  )
 
   useEffect(() => {
     let cancelled = false

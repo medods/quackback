@@ -1,10 +1,10 @@
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import {
+  DEFAULT_LOCALE,
+  isRtlLocale,
   normalizeLocale,
   resolveLocale,
-  isRtlLocale,
   SUPPORTED_LOCALES,
-  DEFAULT_LOCALE,
 } from '../i18n'
 
 describe('normalizeLocale', () => {
@@ -40,9 +40,9 @@ describe('resolveLocale', () => {
     expect(resolveLocale('ru-RU,ru;q=0.9,en;q=0.8')).toBe('ru')
   })
   it('falls back to default when no supported locale found', () => {
-    expect(resolveLocale('zz,xx;q=0.5')).toBe('en')
-    expect(resolveLocale('')).toBe('en')
-    expect(resolveLocale(null)).toBe('en')
+    expect(resolveLocale('zz,xx;q=0.5')).toBe('ru')
+    expect(resolveLocale('')).toBe('ru')
+    expect(resolveLocale(null)).toBe('ru')
   })
   it('respects quality weights', () => {
     expect(resolveLocale('en;q=0.5,ru;q=0.9')).toBe('ru')
@@ -69,16 +69,16 @@ describe('isRtlLocale', () => {
 })
 
 describe('SUPPORTED_LOCALES', () => {
-  it('includes en as default', () => {
+  it('includes en', () => {
     expect(SUPPORTED_LOCALES).toContain('en')
   })
-  it('includes ru', () => {
+  it('includes ru as default', () => {
     expect(SUPPORTED_LOCALES).toContain('ru')
   })
   it('contains only en and ru', () => {
     expect(SUPPORTED_LOCALES).toEqual(['en', 'ru'])
   })
-  it('DEFAULT_LOCALE is en', () => {
-    expect(DEFAULT_LOCALE).toBe('en')
+  it('DEFAULT_LOCALE is ru', () => {
+    expect(DEFAULT_LOCALE).toBe('ru')
   })
 })
