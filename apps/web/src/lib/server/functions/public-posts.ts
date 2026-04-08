@@ -46,7 +46,7 @@ const listPublicPostsSchema = z.object({
   statusIds: z.array(z.string()).optional(),
   statusSlugs: z.array(z.string()).optional(),
   tagIds: z.array(z.string()).optional(),
-  sort: z.enum(['top', 'new', 'trending']).optional().default('top'),
+  sort: z.enum(['top', 'least', 'new', 'old', 'trending']).optional().default('top'),
   page: z.number().int().min(1).optional().default(1),
   limit: z.number().int().min(1).max(100).optional().default(20),
 })

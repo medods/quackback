@@ -1,15 +1,15 @@
-import { useCallback, useEffect, useMemo, memo, useRef, useState } from 'react'
-import { Squares2X2Icon, PencilIcon } from '@heroicons/react/24/solid'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { PencilIcon, Squares2X2Icon } from '@heroicons/react/24/solid'
 import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
   LightBulbIcon,
   MagnifyingGlassIcon,
   XMarkIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
 } from '@heroicons/react/24/outline'
-import { motion, AnimatePresence } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
-import { useIntl, FormattedMessage } from 'react-intl'
+import { FormattedMessage, useIntl } from 'react-intl'
 import {
   Select,
   SelectContent,
@@ -70,6 +70,8 @@ interface WidgetHomeProps {
 interface SearchResult {
   posts: WidgetPost[]
 }
+
+type WidgetPopularSort = 'top' | 'least' | 'new' | 'old' | 'trending'
 
 const MIN_WIDGET_SEARCH_LENGTH = 2
 const similarSearchCache = new Map<string, SearchResult>()
@@ -242,6 +244,7 @@ export function WidgetHome({
   const [isSimilarSearching, setIsSimilarSearching] = useState(false)
   const similarDebounceRef = useRef<ReturnType<typeof setTimeout>>(null)
   const [activeBoardSlug, setActiveBoardSlug] = useState<string | null>(null)
+  const [popularSort, setPopularSort] = useState<WidgetPopularSort>('top')
   const pills = usePillsScroll()
   const [popularSearch, setPopularSearch] = useState('')
   const [debouncedPopularSearch, setDebouncedPopularSearch] = useState('')
@@ -259,11 +262,11 @@ export function WidgetHome({
     isFetchingNextPage,
     isFetching: isFetchingPosts,
   } = useInfiniteQuery({
-    queryKey: ['widget', 'posts', 'popular', 'top', activeBoardSlug ?? 'all'],
+    queryKey: ['widget', 'posts', 'popular', popularSort, activeBoardSlug ?? 'all'],
     queryFn: ({ pageParam }) =>
       listPublicPostsFn({
         data: {
-          sort: 'top',
+          sort: popularSort,
           page: pageParam,
           limit: 20,
           boardSlug: activeBoardSlug ?? undefined,
@@ -273,7 +276,7 @@ export function WidgetHome({
     getNextPageParam: (lastPage, allPages) => (lastPage.hasMore ? allPages.length + 1 : undefined),
     // Only seed from SSR data on the initial unfiltered view
     initialData:
-      activeBoardSlug === null
+      activeBoardSlug === null && popularSort === 'top'
         ? {
             pages: [{ items: initialPosts, total: -1, hasMore: initialHasMore }],
             pageParams: [1],
@@ -820,12 +823,51 @@ export function WidgetHome({
                 </div>
               ) : (
                 <>
-                  <p className="text-[11px] font-medium text-muted-foreground/60 uppercase tracking-wide">
-                    <FormattedMessage
-                      id="widget.home.popular.heading"
-                      defaultMessage="Popular ideas"
-                    />
-                  </p>
+                  <div className="flex items-center gap-1">
+                    <Select
+                      value={popularSort}
+                      onValueChange={(value) => setPopularSort(value as WidgetPopularSort)}
+                    >
+                      <SelectTrigger
+                        size="xs"
+                        className="h-6 min-h-6 px-2 text-[11px] border-border/60 bg-transparent"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent align="end">
+                        <SelectItem value="top" className="text-xs py-1">
+                          <FormattedMessage
+                            id="widget.home.popular.sort.top"
+                            defaultMessage="Most votes"
+                          />
+                        </SelectItem>
+                        <SelectItem value="least" className="text-xs py-1">
+                          <FormattedMessage
+                            id="widget.home.popular.sort.least"
+                            defaultMessage="Least votes"
+                          />
+                        </SelectItem>
+                        <SelectItem value="new" className="text-xs py-1">
+                          <FormattedMessage
+                            id="widget.home.popular.sort.new"
+                            defaultMessage="Newest"
+                          />
+                        </SelectItem>
+                        <SelectItem value="old" className="text-xs py-1">
+                          <FormattedMessage
+                            id="widget.home.popular.sort.old"
+                            defaultMessage="Oldest"
+                          />
+                        </SelectItem>
+                        <SelectItem value="trending" className="text-xs py-1">
+                          <FormattedMessage
+                            id="widget.home.popular.sort.trending"
+                            defaultMessage="Trending"
+                          />
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <button
                     type="button"
                     onClick={() => setPopularSearchOpen(true)}

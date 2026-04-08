@@ -3,6 +3,7 @@ import {
   eq,
   and,
   inArray,
+  asc,
   desc,
   sql,
   isNull,
@@ -45,12 +46,16 @@ export function parseAvatarData(json: string | null): string | null {
   return data.url ?? null
 }
 
-type SortOrder = 'top' | 'new' | 'trending'
+type SortOrder = 'top' | 'least' | 'new' | 'old' | 'trending'
 
 function getPostSortOrder(sort: SortOrder) {
   switch (sort) {
     case 'new':
       return desc(posts.createdAt)
+    case 'old':
+      return asc(posts.createdAt)
+    case 'least':
+      return asc(posts.voteCount)
     case 'trending':
       return sql`(${posts.voteCount} / GREATEST(1, EXTRACT(EPOCH FROM (NOW() - ${posts.createdAt})) / 86400)) DESC`
     default:
