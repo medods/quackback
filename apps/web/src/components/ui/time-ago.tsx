@@ -1,34 +1,51 @@
 import { useEffect, useState } from 'react'
-import { formatDistanceToNow } from 'date-fns'
+import { format, formatDistanceToNow } from 'date-fns'
+import { enUS, ru } from 'date-fns/locale'
+import { useIntl } from 'react-intl'
 
 interface TimeAgoProps {
   date: Date | string
   className?: string
 }
 
-function getTimeAgo(date: Date | string | null | undefined): string {
+export function getDateFnsLocale(locale: string) {
+  if (locale === 'ru') return ru
+  return enUS
+}
+
+export function getTimeAgo(date: Date | string | null | undefined, locale: string): string {
   if (!date) return ''
   const d = typeof date === 'string' ? new Date(date) : date
-  // Check for invalid date
   if (isNaN(d.getTime())) return ''
-  return formatDistanceToNow(d, { addSuffix: true })
+  return formatDistanceToNow(d, { addSuffix: true, locale: getDateFnsLocale(locale) })
+}
+
+export function getTooltipDate(date: Date | string | null | undefined): string {
+  if (!date) return ''
+  const d = typeof date === 'string' ? new Date(date) : date
+  if (isNaN(d.getTime())) return ''
+  const formatted = format(d, 'dd.MM.yyyy HH:mm')
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+  return `${formatted} (${timezone})`
 }
 
 export function TimeAgo({ date, className }: TimeAgoProps) {
-  // Initialize with computed value for SSR
-  const [timeAgo, setTimeAgo] = useState<string>(() => getTimeAgo(date))
+  const { locale } = useIntl()
+  const [timeAgo, setTimeAgo] = useState<string>(() => getTimeAgo(date, locale))
 
   useEffect(() => {
-    // Update immediately in case server/client time differs slightly
-    setTimeAgo(getTimeAgo(date))
+    setTimeAgo(getTimeAgo(date, locale))
 
-    // Update every minute
     const interval = setInterval(() => {
-      setTimeAgo(getTimeAgo(date))
+      setTimeAgo(getTimeAgo(date, locale))
     }, 60000)
 
     return () => clearInterval(interval)
-  }, [date])
+  }, [date, locale])
 
-  return <span className={className}>{timeAgo}</span>
+  return (
+    <span className={className} title={getTooltipDate(date)}>
+      {timeAgo}
+    </span>
+  )
 }
