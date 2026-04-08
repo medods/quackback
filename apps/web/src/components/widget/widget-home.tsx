@@ -71,6 +71,7 @@ interface SearchResult {
   posts: WidgetPost[]
 }
 
+const MIN_WIDGET_SEARCH_LENGTH = 2
 const similarSearchCache = new Map<string, SearchResult>()
 
 const identityInputCls =
@@ -303,17 +304,21 @@ export function WidgetHome({
     onLoadMore: fetchNextPage,
   })
 
+  const normalizedDebouncedPopularSearch = debouncedPopularSearch.trim()
+  const isPopularSearchActive =
+    Array.from(normalizedDebouncedPopularSearch).length >= MIN_WIDGET_SEARCH_LENGTH
+
   // Search query for popular ideas — replaces infinite list when active
   const { data: popularSearchData, isFetching: isPopularSearchFetching } = useQuery({
     queryKey: ['widget', 'search', 'popular', debouncedPopularSearch, activeBoardSlug ?? 'all'],
     queryFn: async () => {
-      const params = new URLSearchParams({ q: debouncedPopularSearch, limit: '20' })
+      const params = new URLSearchParams({ q: normalizedDebouncedPopularSearch, limit: '20' })
       if (activeBoardSlug) params.set('board', activeBoardSlug)
       const res = await fetch(`/api/widget/search?${params}`)
       const json = await res.json()
       return { posts: (json.data?.posts ?? []) as WidgetPost[] }
     },
-    enabled: debouncedPopularSearch.length > 0,
+    enabled: isPopularSearchActive,
   })
 
   const handleAuthRequired = useCallback(
@@ -330,7 +335,7 @@ export function WidgetHome({
   useEffect(() => {
     if (similarDebounceRef.current) clearTimeout(similarDebounceRef.current)
     const q = title.trim()
-    if (!q) {
+    if (Array.from(q).length < MIN_WIDGET_SEARCH_LENGTH) {
       setSimilarPostResults(null)
       setIsSimilarSearching(false)
       return
@@ -866,7 +871,7 @@ export function WidgetHome({
               </div>
             )}
 
-            {debouncedPopularSearch.length > 0 && (
+            {isPopularSearchActive && (
               <>
                 {(isPopularSearchFetching || popularSearch !== debouncedPopularSearch) && (
                   <div className="flex justify-center py-4">
@@ -918,7 +923,7 @@ export function WidgetHome({
               </>
             )}
 
-            {debouncedPopularSearch.length === 0 && (
+            {!isPopularSearchActive && (
               <>
                 {isFetchingPosts && !isFetchingNextPage && allPopularPosts.length === 0 && (
                   <div className="flex justify-center py-4">

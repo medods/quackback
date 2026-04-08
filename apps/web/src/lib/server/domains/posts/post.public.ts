@@ -85,6 +85,31 @@ interface PostListParams {
   limit?: number
 }
 
+const SEARCH_TOKEN_REGEX = /[\p{L}\p{N}]+/gu
+const MAX_SEARCH_TOKENS = 8
+const MAX_SEARCH_TOKEN_LENGTH = 64
+const MIN_SEARCH_TOKEN_LENGTH = 2
+
+function buildPrefixSearchQuery(search: string): string | null {
+  const normalized = search.trim().toLowerCase().replaceAll('ё', 'е')
+  if (!normalized) return null
+
+  const rawTokens = normalized.match(SEARCH_TOKEN_REGEX) ?? []
+  const uniqueTokens: string[] = []
+  const seen = new Set<string>()
+
+  for (const rawToken of rawTokens) {
+    const token = rawToken.slice(0, MAX_SEARCH_TOKEN_LENGTH)
+    if (!token || token.length < MIN_SEARCH_TOKEN_LENGTH || seen.has(token)) continue
+    seen.add(token)
+    uniqueTokens.push(token)
+    if (uniqueTokens.length >= MAX_SEARCH_TOKENS) break
+  }
+
+  if (uniqueTokens.length === 0) return null
+  return uniqueTokens.map((token) => `${token}:*`).join(' & ')
+}
+
 function buildPostFilterConditions(params: PostListParams) {
   const { boardSlug, statusIds, statusSlugs, tagIds, search } = params
   const conditions = [
@@ -116,9 +141,16 @@ function buildPostFilterConditions(params: PostListParams) {
   }
 
   if (search) {
-    conditions.push(
-      sql`(${posts.searchVector} @@ websearch_to_tsquery('russian', ${search}) OR ${posts.searchVector} @@ websearch_to_tsquery('english', ${search}))`
-    )
+    const prefixSearchQuery = buildPrefixSearchQuery(search)
+
+    if (prefixSearchQuery) {
+      conditions.push(
+        sql`(${posts.searchVector} @@ to_tsquery('russian', ${prefixSearchQuery}) OR ${posts.searchVector} @@ to_tsquery('english', ${prefixSearchQuery}))`
+      )
+    } else {
+      // Search query with no indexable tokens (only punctuation/symbols) should return no matches.
+      conditions.push(sql`false`)
+    }
   }
 
   return conditions

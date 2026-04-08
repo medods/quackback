@@ -1,16 +1,19 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { listPublicPosts } from '@/lib/server/domains/posts/post.public'
 
+const MIN_SEARCH_LENGTH = 2
+
 export const Route = createFileRoute('/api/widget/search')({
   server: {
     handlers: {
       GET: async ({ request }) => {
         const url = new URL(request.url)
         const q = url.searchParams.get('q')?.trim()
+        const qLength = q ? Array.from(q).length : 0
         const board = url.searchParams.get('board') || undefined
         const limit = Math.min(Number(url.searchParams.get('limit')) || 5, 20)
 
-        if (!q) {
+        if (!q || qLength < MIN_SEARCH_LENGTH) {
           return Response.json({ data: { posts: [] } }, { headers: corsHeaders() })
         }
 
