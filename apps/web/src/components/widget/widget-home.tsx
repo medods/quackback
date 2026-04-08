@@ -774,7 +774,7 @@ export function WidgetHome({
             <div className="flex items-center justify-between px-1 h-10 shrink-0">
               {popularSearchOpen ? (
                 <div
-                  className="flex items-center gap-1.5 rounded-md border border-primary/40 bg-primary/5 px-2 h-7"
+                  className="flex items-center gap-1.5 rounded-md border border-primary/40 px-2 h-7"
                   style={{ width: '315px', minWidth: 0 }}
                 >
                   <MagnifyingGlassIcon className="w-3.5 h-3.5 text-primary/60 shrink-0" />
