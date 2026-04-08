@@ -94,9 +94,9 @@ export const posts = pgTable(
       { onDelete: 'set null' }
     ),
     // Full-text search vector (generated column, auto-computed from title and content)
-    // Title has weight 'A' (highest), content has weight 'B'
+    // Russian has higher priority (A/B), English is fallback (C/D)
     searchVector: tsvector('search_vector').generatedAlwaysAs(
-      sql`setweight(to_tsvector('english', coalesce(title, '')), 'A') || setweight(to_tsvector('english', coalesce(content, '')), 'B')`
+      sql`setweight(to_tsvector('russian', coalesce(title, '')), 'A') || setweight(to_tsvector('russian', coalesce(content, '')), 'B') || setweight(to_tsvector('english', coalesce(title, '')), 'C') || setweight(to_tsvector('english', coalesce(content, '')), 'D')`
     ),
     // Semantic embedding for AI-powered similarity search (1536 dims = OpenAI text-embedding-3-small)
     embedding: vector('embedding'),

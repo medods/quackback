@@ -116,7 +116,9 @@ function buildPostFilterConditions(params: PostListParams) {
   }
 
   if (search) {
-    conditions.push(sql`${posts.searchVector} @@ websearch_to_tsquery('english', ${search})`)
+    conditions.push(
+      sql`(${posts.searchVector} @@ websearch_to_tsquery('russian', ${search}) OR ${posts.searchVector} @@ websearch_to_tsquery('english', ${search}))`
+    )
   }
 
   return conditions
