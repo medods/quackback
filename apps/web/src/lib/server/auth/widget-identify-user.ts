@@ -1,6 +1,7 @@
 import { generateId } from '@quackback/ids'
 import type { UserId } from '@quackback/ids'
-import { db, user, eq } from '@/lib/server/db'
+import { db, user, principal, eq } from '@/lib/server/db'
+import { isTeamMember } from '@/lib/shared/roles'
 
 export interface WidgetIdentifiedUser {
   externalId: string
@@ -42,6 +43,19 @@ export async function upsertWidgetIdentifiedUser(
     db.query.user.findFirst({ where: eq(user.email, identified.email) }),
   ])
 
+  // Guard against taking over team/admin accounts by email when externalId
+  // does not match anything yet. externalId must stay the primary identity key.
+  let emailFallbackBlocked = false
+  if (!userByExternalId && !userBySessionHint && userByEmail) {
+    const emailOwnerPrincipal = await db.query.principal.findFirst({
+      where: eq(principal.userId, userByEmail.id as UserId),
+      columns: { role: true },
+    })
+    if (isTeamMember(emailOwnerPrincipal?.role)) {
+      emailFallbackBlocked = true
+    }
+  }
+
   if (
     userBySessionHint?.externalId &&
     userBySessionHint.externalId !== identified.externalId &&
@@ -59,6 +73,12 @@ export async function upsertWidgetIdentifiedUser(
   ) {
     throw new WidgetIdentifyExternalIdConflictError(
       `Email ${identified.email} is already bound to a different externalId`
+    )
+  }
+
+  if (emailFallbackBlocked) {
+    throw new WidgetIdentifyExternalIdConflictError(
+      `Email ${identified.email} belongs to a team account and cannot be linked by fallback`
     )
   }
 

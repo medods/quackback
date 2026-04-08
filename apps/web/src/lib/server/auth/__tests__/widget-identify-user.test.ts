@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockUserFindFirst = vi.fn()
+const mockPrincipalFindFirst = vi.fn()
 const mockInsert = vi.fn()
 const mockInsertValues = vi.fn()
 const mockInsertReturning = vi.fn()
@@ -18,6 +19,9 @@ vi.mock('@/lib/server/db', () => ({
       user: {
         findFirst: (...args: unknown[]) => mockUserFindFirst(...args),
       },
+      principal: {
+        findFirst: (...args: unknown[]) => mockPrincipalFindFirst(...args),
+      },
     },
     insert: (...args: unknown[]) => mockInsert(...args),
     update: (...args: unknown[]) => mockUpdate(...args),
@@ -26,6 +30,9 @@ vi.mock('@/lib/server/db', () => ({
     id: 'id',
     email: 'email',
     externalId: 'external_id',
+  },
+  principal: {
+    userId: 'user_id',
   },
   eq: vi.fn(),
 }))
@@ -81,6 +88,7 @@ describe('upsertWidgetIdentifiedUser', () => {
       externalId: null,
       image: null,
     })
+    mockPrincipalFindFirst.mockResolvedValueOnce({ role: 'user' })
 
     const result = await upsertWidgetIdentifiedUser({
       externalId: 'ext-1',
@@ -91,6 +99,27 @@ describe('upsertWidgetIdentifiedUser', () => {
     expect(mockUpdateSet).toHaveBeenCalledWith({ externalId: 'ext-1' })
     expect(result.id).toBe('user_email')
     expect(result.externalId).toBe('ext-1')
+  })
+
+  it('throws when email fallback points to a team account', async () => {
+    mockUserFindFirst.mockResolvedValueOnce(null).mockResolvedValueOnce({
+      id: 'team_user',
+      name: 'Team User',
+      email: 'team@example.com',
+      externalId: null,
+      image: null,
+    })
+    mockPrincipalFindFirst.mockResolvedValueOnce({ role: 'member' })
+
+    await expect(
+      upsertWidgetIdentifiedUser({
+        externalId: 'ext-1',
+        email: 'team@example.com',
+        name: 'Alice',
+      })
+    ).rejects.toBeInstanceOf(WidgetIdentifyExternalIdConflictError)
+    expect(mockUpdateSet).not.toHaveBeenCalled()
+    expect(mockInsertValues).not.toHaveBeenCalled()
   })
 
   it('prefers sessionHint user over email fallback when externalId is missing', async () => {
