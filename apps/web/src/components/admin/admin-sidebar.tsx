@@ -1,17 +1,17 @@
 import { useState } from 'react'
-import { Link, useRouter, useRouterState, useRouteContext } from '@tanstack/react-router'
+import { Link, useRouteContext, useRouter, useRouterState } from '@tanstack/react-router'
 import {
-  ChatBubbleLeftIcon,
-  MapIcon,
-  UsersIcon,
   ArrowRightOnRectangleIcon,
-  Cog6ToothIcon,
   Bars3Icon,
-  GlobeAltIcon,
-  DocumentTextIcon,
   BookOpenIcon,
   ChartBarIcon,
+  ChatBubbleLeftIcon,
+  Cog6ToothIcon,
+  DocumentTextIcon,
+  GlobeAltIcon,
+  MapIcon,
   QuestionMarkCircleIcon,
+  UsersIcon,
 } from '@heroicons/react/24/solid'
 import { Button } from '@/components/ui/button'
 import { Avatar } from '@/components/ui/avatar'
@@ -29,7 +29,6 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { NotificationBell } from '@/components/notifications'
 import { cn } from '@/lib/shared/utils'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import type { LatestVersionResult } from '@/lib/server/functions/version'
 
 interface AdminSidebarProps {
   initialUserData?: {
@@ -37,7 +36,6 @@ interface AdminSidebarProps {
     email: string | null
     avatarUrl: string | null
   }
-  latestVersion?: LatestVersionResult | null
 }
 
 const navItems = [
@@ -89,7 +87,7 @@ function NavItem({
   )
 }
 
-export function AdminSidebar({ initialUserData, latestVersion }: AdminSidebarProps) {
+export function AdminSidebar({ initialUserData }: AdminSidebarProps) {
   const router = useRouter()
   const { session, settings } = useRouteContext({ from: '__root__' })
   const pathname = useRouterState({ select: (s) => s.location.pathname })
@@ -179,9 +177,6 @@ export function AdminSidebar({ initialUserData, latestVersion }: AdminSidebarPro
                     <DropdownMenuTrigger asChild>
                       <button className="relative flex items-center justify-center w-10 h-10 rounded-lg text-muted-foreground/70 hover:text-foreground hover:bg-muted/50 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                         <QuestionMarkCircleIcon className="h-5 w-5" />
-                        {latestVersion && (
-                          <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-primary" />
-                        )}
                         <span className="sr-only">Help</span>
                       </button>
                     </DropdownMenuTrigger>
@@ -214,16 +209,6 @@ export function AdminSidebar({ initialUserData, latestVersion }: AdminSidebarPro
                   <DropdownMenuSeparator />
                   <div className="px-2 py-1.5 flex flex-col gap-1">
                     <span className="text-xs text-muted-foreground/60">v{__APP_VERSION__}</span>
-                    {latestVersion && (
-                      <a
-                        href={latestVersion.releaseUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-primary hover:underline"
-                      >
-                        Update available · v{latestVersion.version}
-                      </a>
-                    )}
                   </div>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -348,16 +333,6 @@ export function AdminSidebar({ initialUserData, latestVersion }: AdminSidebarPro
               </a>
               <div className="px-4 py-2 flex flex-col gap-1">
                 <span className="text-xs text-muted-foreground/50">v{__APP_VERSION__}</span>
-                {latestVersion && (
-                  <a
-                    href={latestVersion.releaseUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-primary hover:underline"
-                  >
-                    Update available · v{latestVersion.version}
-                  </a>
-                )}
               </div>
             </nav>
           </SheetContent>
