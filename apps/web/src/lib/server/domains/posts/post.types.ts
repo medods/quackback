@@ -235,6 +235,8 @@ export interface PublicPostDetail {
   voteCount: number
   authorName: string | null
   principalId: PrincipalId | null
+  /** Current viewer principal ID (resolved from auth context), used for author-only UI actions */
+  viewerPrincipalId: PrincipalId | null
   authorAvatarUrl: string | null
   createdAt: Date
   board: { id: string; name: string; slug: string }

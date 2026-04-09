@@ -7,6 +7,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { type CommentId, type PostId, type StatusId, type UserId } from '@quackback/ids'
 import { isTeamMember } from '@/lib/shared/roles'
 import { createActivity } from '@/lib/server/domains/activity/activity.service'
+import { db, comments, eq } from '@/lib/server/db'
 
 import {
   createComment,
@@ -26,7 +27,7 @@ import {
   restoreComment,
   unpinComment,
 } from '@/lib/server/domains/comments/comment.pin'
-import { NotFoundError } from '@/lib/shared/errors'
+import { ForbiddenError, NotFoundError } from '@/lib/shared/errors'
 import { getOptionalAuth, requireAuth, hasAuthCredentials } from './auth-helpers'
 
 // Schemas
@@ -58,7 +59,7 @@ const getCommentPermissionsSchema = z.object({
 
 const userEditCommentSchema = z.object({
   commentId: z.string(),
-  content: z.string(),
+  content: z.string().trim().min(1).max(5000),
 })
 
 const userDeleteCommentSchema = z.object({
@@ -73,6 +74,21 @@ export type ReactionInput = z.infer<typeof reactionSchema>
 export type GetCommentPermissionsInput = z.infer<typeof getCommentPermissionsSchema>
 export type UserEditCommentInput = z.infer<typeof userEditCommentSchema>
 export type UserDeleteCommentInput = z.infer<typeof userDeleteCommentSchema>
+
+async function assertCommentAuthor(commentId: CommentId, principalId: string): Promise<void> {
+  const comment = await db.query.comments.findFirst({
+    where: eq(comments.id, commentId),
+    columns: { principalId: true },
+  })
+
+  if (!comment) {
+    throw new NotFoundError('COMMENT_NOT_FOUND', `Comment with ID ${commentId} not found`)
+  }
+
+  if (comment.principalId !== principalId) {
+    throw new ForbiddenError('AUTHORSHIP_REQUIRED', 'You can only manage your own comments')
+  }
+}
 
 // Write Operations
 export const createCommentFn = createServerFn({ method: 'POST' })
@@ -247,6 +263,8 @@ export const userEditCommentFn = createServerFn({ method: 'POST' })
       const ctx = await requireAuth()
       const actor = { principalId: ctx.principal.id, role: ctx.principal.role }
 
+      await assertCommentAuthor(data.commentId as CommentId, actor.principalId)
+
       const result = await userEditComment(data.commentId as CommentId, data.content, actor)
       console.log(`[fn:comments] userEditCommentFn: edited id=${data.commentId}`)
       return result
@@ -263,6 +281,8 @@ export const userDeleteCommentFn = createServerFn({ method: 'POST' })
     try {
       const ctx = await requireAuth()
       const actor = { principalId: ctx.principal.id, role: ctx.principal.role }
+
+      await assertCommentAuthor(data.commentId as CommentId, actor.principalId)
 
       await softDeleteComment(data.commentId as CommentId, actor)
       console.log(`[fn:comments] userDeleteCommentFn: deleted id=${data.commentId}`)

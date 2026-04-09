@@ -28,6 +28,9 @@ vi.mock('@tanstack/react-start', () => ({
 const mockCanEditComment = vi.fn()
 const mockCanDeleteComment = vi.fn()
 const mockCanPinComment = vi.fn()
+const mockUserEditComment = vi.fn()
+const mockSoftDeleteComment = vi.fn()
+const mockCommentsFindFirst = vi.fn()
 
 vi.mock('@/lib/server/domains/comments/comment.service', () => ({
   createComment: vi.fn(),
@@ -43,8 +46,8 @@ vi.mock('@/lib/server/domains/comments/comment.reactions', () => ({
 vi.mock('@/lib/server/domains/comments/comment.permissions', () => ({
   canEditComment: (...args: unknown[]) => mockCanEditComment(...args),
   canDeleteComment: (...args: unknown[]) => mockCanDeleteComment(...args),
-  softDeleteComment: vi.fn(),
-  userEditComment: vi.fn(),
+  softDeleteComment: (...args: unknown[]) => mockSoftDeleteComment(...args),
+  userEditComment: (...args: unknown[]) => mockUserEditComment(...args),
 }))
 
 vi.mock('@/lib/server/domains/comments/comment.pin', () => ({
@@ -87,6 +90,18 @@ vi.mock('@/lib/server/domains/activity/activity.service', () => ({
   createActivity: vi.fn(),
 }))
 
+vi.mock('@/lib/server/db', () => ({
+  db: {
+    query: {
+      comments: {
+        findFirst: (...args: unknown[]) => mockCommentsFindFirst(...args),
+      },
+    },
+  },
+  comments: { id: 'id' },
+  eq: vi.fn(),
+}))
+
 // --- Handler setup ---
 
 // Handler indices match the declaration order in comments.ts:
@@ -95,9 +110,13 @@ vi.mock('@/lib/server/domains/activity/activity.service', () => ({
 // 6: userEditCommentFn, 7: userDeleteCommentFn, 8: restoreCommentFn,
 // 9: pinCommentFn, 10: unpinCommentFn, 11: canPinCommentFn
 const HANDLER_INDEX_GET_COMMENT_PERMISSIONS = 5
+const HANDLER_INDEX_USER_EDIT_COMMENT = 6
+const HANDLER_INDEX_USER_DELETE_COMMENT = 7
 const HANDLER_INDEX_CAN_PIN_COMMENT = 11
 
 let getCommentPermissionsHandler: AnyHandler
+let userEditCommentHandler: AnyHandler
+let userDeleteCommentHandler: AnyHandler
 let canPinCommentHandler: AnyHandler
 
 beforeEach(async () => {
@@ -106,7 +125,10 @@ beforeEach(async () => {
     await import('../comments')
   }
   getCommentPermissionsHandler = handlersByIndex[HANDLER_INDEX_GET_COMMENT_PERMISSIONS]
+  userEditCommentHandler = handlersByIndex[HANDLER_INDEX_USER_EDIT_COMMENT]
+  userDeleteCommentHandler = handlersByIndex[HANDLER_INDEX_USER_DELETE_COMMENT]
   canPinCommentHandler = handlersByIndex[HANDLER_INDEX_CAN_PIN_COMMENT]
+  mockCommentsFindFirst.mockResolvedValue({ principalId: MOCK_AUTH_CONTEXT.principal.id })
 })
 
 // --- Shared fixtures ---
@@ -195,5 +217,57 @@ describe('canPinCommentFn error handling', () => {
     await expect(canPinCommentHandler({ data: { commentId: COMMENT_ID } })).rejects.toThrow(
       TypeError
     )
+  })
+})
+
+// ============================================
+// userEditCommentFn / userDeleteCommentFn authorship
+// ============================================
+
+describe('user comment actions authorship validation', () => {
+  it('blocks editing when actor is not the comment author', async () => {
+    mockRequireAuth.mockResolvedValue(MOCK_AUTH_CONTEXT)
+    mockCommentsFindFirst.mockResolvedValueOnce({ principalId: 'principal_other' })
+
+    await expect(
+      userEditCommentHandler({ data: { commentId: COMMENT_ID, content: 'Updated' } })
+    ).rejects.toThrow('own comments')
+    expect(mockUserEditComment).not.toHaveBeenCalled()
+  })
+
+  it('allows editing when actor is the comment author', async () => {
+    mockRequireAuth.mockResolvedValue(MOCK_AUTH_CONTEXT)
+    mockCommentsFindFirst.mockResolvedValueOnce({ principalId: MOCK_AUTH_CONTEXT.principal.id })
+    mockUserEditComment.mockResolvedValueOnce({ id: COMMENT_ID, content: 'Updated' })
+
+    await userEditCommentHandler({ data: { commentId: COMMENT_ID, content: 'Updated' } })
+
+    expect(mockUserEditComment).toHaveBeenCalledWith(COMMENT_ID, 'Updated', {
+      principalId: MOCK_AUTH_CONTEXT.principal.id,
+      role: MOCK_AUTH_CONTEXT.principal.role,
+    })
+  })
+
+  it('blocks deletion when actor is not the comment author', async () => {
+    mockRequireAuth.mockResolvedValue(MOCK_AUTH_CONTEXT)
+    mockCommentsFindFirst.mockResolvedValueOnce({ principalId: 'principal_other' })
+
+    await expect(userDeleteCommentHandler({ data: { commentId: COMMENT_ID } })).rejects.toThrow(
+      'own comments'
+    )
+    expect(mockSoftDeleteComment).not.toHaveBeenCalled()
+  })
+
+  it('allows deletion when actor is the comment author', async () => {
+    mockRequireAuth.mockResolvedValue(MOCK_AUTH_CONTEXT)
+    mockCommentsFindFirst.mockResolvedValueOnce({ principalId: MOCK_AUTH_CONTEXT.principal.id })
+    mockSoftDeleteComment.mockResolvedValueOnce(undefined)
+
+    await userDeleteCommentHandler({ data: { commentId: COMMENT_ID } })
+
+    expect(mockSoftDeleteComment).toHaveBeenCalledWith(COMMENT_ID, {
+      principalId: MOCK_AUTH_CONTEXT.principal.id,
+      role: MOCK_AUTH_CONTEXT.principal.role,
+    })
   })
 })

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { truncateContent } from '../widget-changelog'
-import { countLiveComments } from '../widget-post-detail'
+import { canManageWidgetComment } from '../widget-comment-list'
+import { canManageWidgetPost, countLiveComments } from '../widget-post-detail'
 
 describe('truncateContent', () => {
   it('returns short content unchanged', () => {
@@ -142,5 +143,35 @@ describe('countLiveComments', () => {
       },
     ]
     expect(countLiveComments(comments)).toBe(4)
+  })
+})
+
+describe('canManageWidgetPost', () => {
+  it('returns true when viewer is the post author', () => {
+    expect(canManageWidgetPost('principal_1', 'principal_1')).toBe(true)
+  })
+
+  it('returns false when viewer is not the post author', () => {
+    expect(canManageWidgetPost('principal_1', 'principal_2')).toBe(false)
+  })
+
+  it('returns false when either principal is missing', () => {
+    expect(canManageWidgetPost(null, 'principal_1')).toBe(false)
+    expect(canManageWidgetPost('principal_1', null)).toBe(false)
+  })
+})
+
+describe('canManageWidgetComment', () => {
+  it('returns true when viewer is the comment author', () => {
+    expect(canManageWidgetComment('principal_1', 'principal_1')).toBe(true)
+  })
+
+  it('returns false when viewer is not the comment author', () => {
+    expect(canManageWidgetComment('principal_1', 'principal_2')).toBe(false)
+  })
+
+  it('returns false when either principal is missing', () => {
+    expect(canManageWidgetComment(undefined, 'principal_1')).toBe(false)
+    expect(canManageWidgetComment('principal_1', undefined)).toBe(false)
   })
 })

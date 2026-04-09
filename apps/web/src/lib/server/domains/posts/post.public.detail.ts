@@ -263,6 +263,7 @@ export async function getPublicPostDetail(
     voteCount: postResult.voteCount,
     authorName: postResult.authorName,
     principalId: postResult.principalId,
+    viewerPrincipalId: principalId ?? null,
     authorAvatarUrl,
     createdAt: postResult.createdAt,
     board: { id: postResult.boardId, name: postResult.boardName, slug: postResult.boardSlug },

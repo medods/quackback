@@ -51,6 +51,7 @@
     "db:reset": "bun packages/db/src/reset.ts",
     "db:sync-counts": "bun packages/db/src/sync-counts.ts",
     "db:generate-csv": "bun packages/db/src/generate-sample-csv.ts",
+    "db:rebuild": "bun reset && bun db:migrate && bun db:seed",
     "reset": "bun packages/db/src/reset.ts",
     "import": "bun scripts/import/cli.ts",
     "import:uservoice": "bun scripts/import/cli.ts uservoice",

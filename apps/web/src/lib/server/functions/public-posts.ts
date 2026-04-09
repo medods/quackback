@@ -18,6 +18,7 @@ import { sanitizeTiptapContent } from '@/lib/server/sanitize-tiptap'
 import { getRequestHeaders } from '@tanstack/react-start/server'
 import { getOptionalAuth, requireAuth, hasAuthCredentials } from './auth-helpers'
 import { getSettings } from './workspace'
+import { db, posts, eq } from '@/lib/server/db'
 import { listPublicPosts, getAllUserVotedPostIds } from '@/lib/server/domains/posts/post.public'
 import {
   getPublicRoadmapPostsPaginated,
@@ -33,6 +34,7 @@ import { getDefaultStatus } from '@/lib/server/domains/statuses/status.service'
 import { getMemberByUser } from '@/lib/server/domains/principals/principal.service'
 import { listPublicRoadmaps } from '@/lib/server/domains/roadmaps/roadmap.service'
 import { getPublicRoadmapPosts } from '@/lib/server/domains/roadmaps/roadmap.query'
+import { ForbiddenError, NotFoundError } from '@/lib/shared/errors'
 
 // ============================================
 // Schemas
@@ -112,6 +114,21 @@ export type GetVoteSidebarDataInput = z.infer<typeof getVoteSidebarDataSchema>
 // ============================================
 // Server Functions
 // ============================================
+
+async function assertPostAuthor(postId: PostId, principalId: PrincipalId): Promise<void> {
+  const post = await db.query.posts.findFirst({
+    where: eq(posts.id, postId),
+    columns: { principalId: true },
+  })
+
+  if (!post) {
+    throw new NotFoundError('POST_NOT_FOUND', `Post with ID ${postId} not found`)
+  }
+
+  if (post.principalId !== principalId) {
+    throw new ForbiddenError('AUTHORSHIP_REQUIRED', 'You can only manage your own posts')
+  }
+}
 
 /**
  * List public posts with filtering (no auth required).
@@ -227,6 +244,8 @@ export const userEditPostFn = createServerFn({ method: 'POST' })
         role: ctx.principal.role,
       }
 
+      await assertPostAuthor(postId, actor.principalId)
+
       const sanitizedContentJson = contentJson ? sanitizeTiptapContent(contentJson) : undefined
       const result = await userEditPost(
         postId,
@@ -265,6 +284,8 @@ export const userDeletePostFn = createServerFn({ method: 'POST' })
         role: ctx.principal.role,
         userId: ctx.user.id,
       }
+
+      await assertPostAuthor(postId, actor.principalId)
 
       await softDeletePost(postId, actor)
 

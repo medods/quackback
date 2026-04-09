@@ -53,6 +53,7 @@ export interface PublicPostDetailView {
   voteCount: number
   authorName: string | null
   principalId: PrincipalId | null
+  viewerPrincipalId?: PrincipalId | null
   authorAvatarUrl: string | null
   createdAt: Date | string
   board: { id: string; name: string; slug: string }
