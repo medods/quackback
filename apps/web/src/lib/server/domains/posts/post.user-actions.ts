@@ -10,6 +10,7 @@ import {
   posts,
   boards,
   comments,
+  votes,
   postEditHistory,
   eq,
   and,
@@ -17,10 +18,11 @@ import {
   isNull,
   type Post,
 } from '@/lib/server/db'
-import { type PostId, type PrincipalId, type UserId } from '@quackback/ids'
+import { toUuid, type PostId, type PrincipalId, type UserId } from '@quackback/ids'
 import { NotFoundError, ValidationError, ForbiddenError } from '@/lib/shared/errors'
 import { isTeamMember } from '@/lib/shared/roles'
 import { createActivity } from '@/lib/server/domains/activity/activity.service'
+import { removeVote } from '@/lib/server/domains/posts/post.voting'
 import {
   dispatchPostDeleted,
   dispatchPostRestored,
@@ -74,13 +76,19 @@ async function hasCommentsFromOthers(
   return !!otherComment
 }
 
-async function getCommentCount(postId: PostId): Promise<number> {
-  const result = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(comments)
-    .where(and(eq(comments.postId, postId), isNull(comments.deletedAt)))
+async function hasVotesFromOthers(
+  postId: PostId,
+  authorPrincipalId: PrincipalId | null | undefined
+): Promise<boolean> {
+  if (!authorPrincipalId) return true
+  const authorPrincipalUuid = toUuid(authorPrincipalId)
 
-  return result[0]?.count ?? 0
+  const otherVote = await db.query.votes.findFirst({
+    where: and(eq(votes.postId, postId), sql`${votes.principalId} != ${authorPrincipalUuid}::uuid`),
+    columns: { id: true },
+  })
+
+  return !!otherVote
 }
 
 // ============================================================================
@@ -151,7 +159,10 @@ export async function userEditPost(
         )
       }
       if (existingPost.voteCount > 0) {
-        throw new ForbiddenError('EDIT_NOT_ALLOWED', 'Cannot edit posts that have received votes')
+        const hasOtherVotes = await hasVotesFromOthers(postId, actor.principalId)
+        if (hasOtherVotes) {
+          throw new ForbiddenError('EDIT_NOT_ALLOWED', 'Cannot edit posts that have received votes')
+        }
       }
       // Check for comments from others
       const hasOtherComments = await hasCommentsFromOthers(postId, actor.principalId)
@@ -253,15 +264,17 @@ export async function softDeletePost(
         )
       }
       if (existingPost.voteCount > 0) {
-        throw new ForbiddenError(
-          'DELETE_NOT_ALLOWED',
-          'Cannot delete posts that have received votes'
-        )
-      }
-      // Check for any comments
-      const commentCount = await getCommentCount(postId)
-      if (commentCount > 0) {
-        throw new ForbiddenError('DELETE_NOT_ALLOWED', 'Cannot delete posts that have comments')
+        const hasOtherVotes = await hasVotesFromOthers(postId, actor.principalId)
+        if (hasOtherVotes) {
+          throw new ForbiddenError(
+            'DELETE_NOT_ALLOWED',
+            'Cannot delete posts that have received votes'
+          )
+        }
+
+        // Allow delete when the only vote is from the author, but remove that vote first
+        // so denormalized vote_count stays consistent.
+        await removeVote(postId, actor.principalId)
       }
     }
   }

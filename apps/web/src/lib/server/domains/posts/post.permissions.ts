@@ -6,9 +6,8 @@
  * live in post.user-actions.ts.
  */
 
-import { db, posts, comments, eq, and, sql, isNull } from '@/lib/server/db'
+import { db, posts, comments, votes, eq, and, sql, isNull } from '@/lib/server/db'
 import { toUuid, type PostId, type PrincipalId, type StatusId } from '@quackback/ids'
-import { getExecuteRows } from '@/lib/server/utils'
 import { NotFoundError } from '@/lib/shared/errors'
 import { isTeamMember } from '@/lib/shared/roles'
 import { DEFAULT_PORTAL_CONFIG, type PortalConfig } from '@/lib/server/domains/settings'
@@ -70,7 +69,10 @@ export async function canEditPost(
   // Check for engagement (votes, comments from others)
   if (!config.features.allowEditAfterEngagement) {
     if (post.voteCount > 0) {
-      return { allowed: false, reason: 'Cannot edit posts that have received votes' }
+      const hasOtherVotes = await hasVotesFromOthers(postId, actor.principalId)
+      if (hasOtherVotes) {
+        return { allowed: false, reason: 'Cannot edit posts that have received votes' }
+      }
     }
 
     const hasOtherComments = await hasCommentsFromOthers(postId, actor.principalId)
@@ -140,13 +142,10 @@ export async function canDeletePost(
   // Check for engagement (votes, comments)
   if (!config.features.allowDeleteAfterEngagement) {
     if (post.voteCount > 0) {
-      return { allowed: false, reason: 'Cannot delete posts that have received votes' }
-    }
-
-    // Check for any comments (not just from others)
-    const commentCount = await getCommentCount(postId)
-    if (commentCount > 0) {
-      return { allowed: false, reason: 'Cannot delete posts that have comments' }
+      const hasOtherVotes = await hasVotesFromOthers(postId, actor.principalId)
+      if (hasOtherVotes) {
+        return { allowed: false, reason: 'Cannot delete posts that have received votes' }
+      }
     }
   }
 
@@ -229,36 +228,34 @@ export async function getPostPermissions(
     }
   }
 
-  // Vote check affects both (if still allowed)
-  if (post.voteCount > 0) {
-    if (canEdit.allowed && !config.features.allowEditAfterEngagement) {
-      canEdit = { allowed: false, reason: 'Cannot edit posts that have received votes' }
-    }
-    if (canDelete.allowed && !config.features.allowDeleteAfterEngagement) {
-      canDelete = { allowed: false, reason: 'Cannot delete posts that have received votes' }
+  // Vote check affects both only when there are votes from non-author users.
+  const needsVoteCheck =
+    post.voteCount > 0 &&
+    ((canEdit.allowed && !config.features.allowEditAfterEngagement) ||
+      (canDelete.allowed && !config.features.allowDeleteAfterEngagement))
+
+  if (needsVoteCheck) {
+    const hasOtherVotes = await hasVotesFromOthers(postId, actor.principalId)
+    if (hasOtherVotes) {
+      if (canEdit.allowed && !config.features.allowEditAfterEngagement) {
+        canEdit = { allowed: false, reason: 'Cannot edit posts that have received votes' }
+      }
+      if (canDelete.allowed && !config.features.allowDeleteAfterEngagement) {
+        canDelete = { allowed: false, reason: 'Cannot delete posts that have received votes' }
+      }
     }
   }
 
-  // Comment checks - use combined query if either check is needed
+  // Comment checks for edit only
   const needsEditCommentCheck = canEdit.allowed && !config.features.allowEditAfterEngagement
-  const needsDeleteCommentCheck = canDelete.allowed && !config.features.allowDeleteAfterEngagement
+  if (needsEditCommentCheck) {
+    const hasOtherComments = await hasCommentsFromOthers(postId, actor.principalId)
 
-  if (needsEditCommentCheck || needsDeleteCommentCheck) {
-    // Single query to get both total count and other-user comment count
-    const { totalCount, hasOtherComments } = await getCommentStatsForPermissions(
-      postId,
-      actor.principalId
-    )
-
-    if (needsEditCommentCheck && hasOtherComments) {
+    if (hasOtherComments) {
       canEdit = {
         allowed: false,
         reason: 'Cannot edit posts that have comments from other users',
       }
-    }
-
-    if (needsDeleteCommentCheck && totalCount > 0) {
-      canDelete = { allowed: false, reason: 'Cannot delete posts that have comments' }
     }
   }
 
@@ -306,46 +303,21 @@ async function hasCommentsFromOthers(
 }
 
 /**
- * Get the count of comments on a post (excluding deleted)
+ * Check if a post has votes from users other than the author.
  */
-async function getCommentCount(postId: PostId): Promise<number> {
-  const result = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(comments)
-    .where(and(eq(comments.postId, postId), isNull(comments.deletedAt)))
-
-  return result[0]?.count ?? 0
-}
-
-/**
- * Combined query to get comment stats for permission checks.
- * Returns both total count and whether there are comments from others in a single query.
- * This is more efficient than calling hasCommentsFromOthers and getCommentCount separately.
- */
-async function getCommentStatsForPermissions(
+async function hasVotesFromOthers(
   postId: PostId,
   authorPrincipalId: PrincipalId | null | undefined
-): Promise<{ totalCount: number; hasOtherComments: boolean }> {
-  // Use conditional aggregation to get both values in one query
-  const postUuid = toUuid(postId)
-  const principalUuid = authorPrincipalId ? toUuid(authorPrincipalId) : null
+): Promise<boolean> {
+  if (!authorPrincipalId) return true
+  const authorPrincipalUuid = toUuid(authorPrincipalId)
 
-  const result = await db.execute(sql`
-    SELECT
-      COUNT(*) as total_count,
-      COUNT(*) FILTER (WHERE ${comments.principalId} IS NOT NULL AND ${comments.principalId} != ${principalUuid}::uuid) as other_count
-    FROM ${comments}
-    WHERE ${comments.postId} = ${postUuid}::uuid
-      AND ${comments.deletedAt} IS NULL
-  `)
+  const otherVote = await db.query.votes.findFirst({
+    where: and(eq(votes.postId, postId), sql`${votes.principalId} != ${authorPrincipalUuid}::uuid`),
+    columns: { id: true },
+  })
 
-  type ResultRow = { total_count: number; other_count: number }
-  const rows = getExecuteRows<ResultRow>(result)
-  const row = rows[0]
-  return {
-    totalCount: Number(row?.total_count ?? 0),
-    hasOtherComments: Number(row?.other_count ?? 0) > 0,
-  }
+  return !!otherVote
 }
 
 /**
