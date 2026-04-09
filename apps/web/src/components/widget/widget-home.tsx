@@ -909,7 +909,7 @@ export function WidgetHome({
                       })}
                     >
                       <MagnifyingGlassIcon className="w-4 h-4" />
-                      <span className="text-[12px]">Поиск</span>
+                      <span className="text-[13px]">Поиск</span>
                     </button>
                   </div>
                 </>
