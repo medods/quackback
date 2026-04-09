@@ -59,6 +59,8 @@
   "widget.postDetail.deleting": "Удаление...",
   "widget.postDetail.deleteConfirm": "Удалить эту публикацию? Действие нельзя отменить.",
   "widget.postDetail.deleted": "Публикация удалена",
+  "widget.postDetail.notFoundOrDeleted": "Эта публикация не существует или была удалена",
+  "widget.postDetail.backToList": "К списку публикаций",
   "widget.postDetail.editTitlePlaceholder": "В чем идея?",
   "widget.postDetail.editContentPlaceholder": "Добавьте больше деталей...",
   "widget.commentList.empty": "Комментариев пока нет. Оставьте первый.",

@@ -41,6 +41,7 @@ interface WidgetPostDetailProps {
   anonymousVotingEnabled?: boolean
   anonymousCommentingEnabled?: boolean
   imageUploadsInWidget?: boolean
+  onBackToList?: () => void
 }
 
 function getInitialPostContentJson(post: {
@@ -75,6 +76,7 @@ export function WidgetPostDetail({
   anonymousVotingEnabled = true,
   anonymousCommentingEnabled = false,
   imageUploadsInWidget = true,
+  onBackToList,
 }: WidgetPostDetailProps) {
   const intl = useIntl()
   const {
@@ -334,6 +336,18 @@ export function WidgetPostDetail({
         <p className="text-sm text-muted-foreground">
           <FormattedMessage id="widget.postDetail.deleted" defaultMessage="Post deleted" />
         </p>
+        {onBackToList && (
+          <button
+            type="button"
+            onClick={onBackToList}
+            className="mt-3 inline-flex items-center justify-center rounded-md border border-border/60 bg-muted/30 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted/50 transition-colors"
+          >
+            <FormattedMessage
+              id="widget.postDetail.backToList"
+              defaultMessage="Back to posts list"
+            />
+          </button>
+        )}
       </div>
     )
   }
@@ -343,18 +357,22 @@ export function WidgetPostDetail({
       <div className="flex flex-col items-center justify-center h-full px-4 text-center">
         <p className="text-sm text-muted-foreground">
           <FormattedMessage
-            id="widget.postDetail.error.couldNotLoad"
-            defaultMessage="Could not load post"
+            id="widget.postDetail.notFoundOrDeleted"
+            defaultMessage="This post does not exist or has been deleted"
           />
         </p>
-        <p className="text-xs text-muted-foreground/60 mt-1">
-          {error instanceof Error
-            ? error.message
-            : intl.formatMessage({
-                id: 'widget.postDetail.error.somethingWrong',
-                defaultMessage: 'Something went wrong',
-              })}
-        </p>
+        {onBackToList && (
+          <button
+            type="button"
+            onClick={onBackToList}
+            className="mt-3 inline-flex items-center justify-center rounded-md border border-border/60 bg-muted/30 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted/50 transition-colors"
+          >
+            <FormattedMessage
+              id="widget.postDetail.backToList"
+              defaultMessage="Back to posts list"
+            />
+          </button>
+        )}
       </div>
     )
   }

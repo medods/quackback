@@ -361,6 +361,7 @@ function WidgetPage() {
           anonymousVotingEnabled={features.anonymousVoting}
           anonymousCommentingEnabled={features.anonymousCommenting}
           imageUploadsInWidget={imageUploadsInWidget}
+          onBackToList={handleBack}
         />
       )}
 

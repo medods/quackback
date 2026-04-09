@@ -59,6 +59,8 @@
   "widget.postDetail.deleting": "Deleting...",
   "widget.postDetail.deleteConfirm": "Delete this post? This action cannot be undone.",
   "widget.postDetail.deleted": "Post deleted",
+  "widget.postDetail.notFoundOrDeleted": "This post does not exist or has been deleted",
+  "widget.postDetail.backToList": "Back to posts list",
   "widget.postDetail.editTitlePlaceholder": "What's your idea?",
   "widget.postDetail.editContentPlaceholder": "Add more details...",
   "widget.commentList.empty": "No comments yet. Be the first to share your thoughts!",
