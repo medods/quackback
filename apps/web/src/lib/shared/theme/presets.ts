@@ -533,11 +533,4 @@ export function getPreset(name: string): ThemePreset | undefined {
   return themePresets[name]
 }
 
-export const primaryPresetIds = [
-  'default',
-  'minimal',
-  'playful',
-  'editorial',
-  'tech',
-  'cozy',
-] as const
+export const primaryPresetIds = ['default', 'minimal', 'playful', 'editorial', 'tech'] as const

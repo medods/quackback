@@ -1,18 +1,18 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import {
-  themePresets,
-  primaryPresetIds,
-  extractMinimal,
   extractCssVariables,
+  extractMinimal,
   generateReadableCSS,
+  type MinimalThemeVariables,
   parseCssToMinimal,
+  type ParsedCssVariables,
+  primaryPresetIds,
   replaceCssVar,
   type ThemeConfig,
-  type MinimalThemeVariables,
   type ThemeMode,
-  type ParsedCssVariables,
+  themePresets,
 } from '@/lib/shared/theme'
-import { updateThemeFn, updateCustomCssFn } from '@/lib/server/functions/settings'
+import { updateCustomCssFn, updateThemeFn } from '@/lib/server/functions/settings'
 
 export const FONT_OPTIONS = [
   {
@@ -175,6 +175,10 @@ export interface BrandingState {
   setThemeMode: (mode: ThemeMode) => void
   activePresetId: string | null
   setPreset: (presetId: string) => void
+  isManualTheme: boolean
+  manualDefaults: Record<string, string>
+  setManualMode: () => void
+  setManualColor: (varName: string, value: string) => void
   font: string
   setFont: (font: string) => void
   currentFontId: string
@@ -277,6 +281,13 @@ export function useBrandingState(options: UseBrandingStateOptions): BrandingStat
   }, [parsedCssVariables])
 
   // ============================================
+  // Manual theme state
+  // ============================================
+  const [isManualTheme, setIsManualTheme] = useState(false)
+  // Defaults captured when entering manual mode (from previous preset or current CSS)
+  const [manualDefaults, setManualDefaults] = useState<Record<string, string>>(() => ({}))
+
+  // ============================================
   // Actions — all modify cssText
   // ============================================
   const setPreset = useCallback(
@@ -285,10 +296,22 @@ export function useBrandingState(options: UseBrandingStateOptions): BrandingStat
       if (!preset) return
       const lightMinimal = extractMinimal(preset.light)
       const darkMinimal = extractMinimal(preset.dark)
+      setIsManualTheme(false)
       setCssText(generateReadableCSS(lightMinimal, darkMinimal, themeMode))
     },
     [themeMode]
   )
+
+  const setManualMode = useCallback(() => {
+    setIsManualTheme(true)
+    // Capture current light variables as defaults
+    const currentVars = extractCssVariables(cssText)
+    setManualDefaults({ ...currentVars.light })
+  }, [cssText])
+
+  const setManualColor = useCallback((varName: string, value: string) => {
+    setCssText((prev) => replaceCssVar(prev, varName, value))
+  }, [])
 
   const setFont = useCallback((fontValue: string) => {
     setCssText((prev) => replaceCssVar(prev, '--font-sans', fontValue))
@@ -346,6 +369,10 @@ export function useBrandingState(options: UseBrandingStateOptions): BrandingStat
     setThemeMode,
     activePresetId,
     setPreset,
+    isManualTheme,
+    manualDefaults,
+    setManualMode,
+    setManualColor,
     font,
     setFont,
     currentFontId,

@@ -1,15 +1,15 @@
-import { useState, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { settingsQueries } from '@/lib/client/queries/settings'
 import {
-  SunIcon,
-  MoonIcon,
-  CheckIcon,
   ArrowPathIcon,
   CameraIcon,
+  CheckIcon,
+  MoonIcon,
   PaintBrushIcon,
+  SunIcon,
 } from '@heroicons/react/24/solid'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -34,20 +34,26 @@ import { cn } from '@/lib/shared/utils'
 import { BackLink } from '@/components/ui/back-link'
 import { PageHeader } from '@/components/shared/page-header'
 import {
-  BrandingLayout,
   BrandingControlsPanel,
+  BrandingLayout,
   BrandingPreviewPanel,
 } from '@/components/admin/settings/branding/branding-layout'
 import { ThemePreview } from '@/components/admin/settings/branding/theme-preview'
 import {
-  useBrandingState,
   ALL_FONTS_URL,
   FONT_OPTIONS,
+  useBrandingState,
 } from '@/components/admin/settings/branding/use-branding-state'
 import { oklchColor } from '@/components/admin/settings/branding/oklch-color-extension'
-import { primaryPresetIds, themePresets, type ThemeConfig } from '@/lib/shared/theme'
+import {
+  hexToOklch,
+  oklchToHex,
+  primaryPresetIds,
+  type ThemeConfig,
+  themePresets,
+} from '@/lib/shared/theme'
 import { useWorkspaceLogo } from '@/lib/client/hooks/use-settings-queries'
-import { useUploadWorkspaceLogo, useDeleteWorkspaceLogo } from '@/lib/client/mutations/settings'
+import { useDeleteWorkspaceLogo, useUploadWorkspaceLogo } from '@/lib/client/mutations/settings'
 import { updateWorkspaceNameFn } from '@/lib/server/functions/settings'
 
 // ==============================================
@@ -261,7 +267,7 @@ function BrandingPage() {
                 {primaryPresetIds.map((presetId) => {
                   const preset = themePresets[presetId]
                   if (!preset) return null
-                  const isActive = state.activePresetId === presetId
+                  const isActive = !state.isManualTheme && state.activePresetId === presetId
                   return (
                     <button
                       key={presetId}
@@ -284,7 +290,29 @@ function BrandingPage() {
                     </button>
                   )
                 })}
+                {/* Manual theme card */}
+                <button
+                  onClick={state.setManualMode}
+                  className={cn(
+                    'flex flex-col items-center gap-1.5 px-2 py-2.5 rounded-lg border text-center text-xs font-medium transition-colors',
+                    state.isManualTheme
+                      ? 'border-primary bg-primary/5 ring-1 ring-primary text-foreground'
+                      : 'border-border bg-background text-foreground hover:border-primary/50 hover:bg-muted/50'
+                  )}
+                >
+                  <div className="h-5 w-5 rounded-full border border-border/50 bg-gradient-to-br from-primary via-secondary to-accent" />
+                  <span className="truncate">Manual</span>
+                  <span className="text-[10px] text-muted-foreground truncate">Custom colors</span>
+                </button>
               </div>
+
+              {state.isManualTheme && (
+                <ManualThemeEditor
+                  variables={state.parsedCssVariables.light}
+                  defaults={state.manualDefaults}
+                  onColorChange={state.setManualColor}
+                />
+              )}
             </div>
 
             {/* Typography Section */}
@@ -599,6 +627,121 @@ function LogoUploader({ workspaceName, onLogoChange }: LogoUploaderProps) {
           title="Crop your logo"
         />
       )}
+    </div>
+  )
+}
+
+// ==============================================
+// Manual Theme Editor
+// ==============================================
+
+const COLOR_VAR_LABELS: Record<string, string> = {
+  '--background': 'Background',
+  '--foreground': 'Foreground',
+  '--card': 'Card',
+  '--card-foreground': 'Card Foreground',
+  '--popover': 'Popover',
+  '--popover-foreground': 'Popover Foreground',
+  '--primary': 'Primary',
+  '--primary-foreground': 'Primary Foreground',
+  '--secondary': 'Secondary',
+  '--secondary-foreground': 'Secondary Foreground',
+  '--muted': 'Muted',
+  '--muted-foreground': 'Muted Foreground',
+  '--accent': 'Accent',
+  '--accent-foreground': 'Accent Foreground',
+  '--destructive': 'Destructive',
+  '--destructive-foreground': 'Destructive Foreground',
+  '--border': 'Border',
+  '--input': 'Input',
+  '--ring': 'Ring',
+  '--success': 'Success',
+  '--chart-1': 'Chart 1',
+  '--chart-2': 'Chart 2',
+  '--chart-3': 'Chart 3',
+  '--chart-4': 'Chart 4',
+  '--chart-5': 'Chart 5',
+}
+
+interface ManualThemeEditorProps {
+  variables: Record<string, string>
+  defaults: Record<string, string>
+  onColorChange: (varName: string, value: string) => void
+}
+
+function ManualThemeEditor({ variables, defaults, onColorChange }: ManualThemeEditorProps) {
+  const colorVarNames = Object.keys(COLOR_VAR_LABELS).filter((name) => name in variables)
+  const debounceTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+
+  const debouncedColorChange = useCallback(
+    (varName: string, oklch: string) => {
+      if (debounceTimers.current[varName]) clearTimeout(debounceTimers.current[varName])
+      debounceTimers.current[varName] = setTimeout(() => {
+        onColorChange(varName, oklch)
+      }, 80)
+    },
+    [onColorChange]
+  )
+
+  return (
+    <div className="space-y-1.5 pt-1">
+      {colorVarNames.map((varName) => {
+        const currentValue = variables[varName] ?? ''
+        const defaultValue = defaults[varName] ?? currentValue
+        const isModified = currentValue !== defaultValue
+
+        let hexValue = '#000000'
+        try {
+          hexValue = oklchToHex(currentValue)
+        } catch {
+          // fallback
+        }
+
+        const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+          const hex = e.target.value
+          const oklch = hexToOklch(hex)
+          debouncedColorChange(varName, oklch)
+        }
+
+        const handleReset = () => {
+          onColorChange(varName, defaultValue)
+        }
+
+        return (
+          <div key={varName} className="flex items-center gap-2">
+            <div className="flex-1 text-xs text-muted-foreground truncate">
+              {COLOR_VAR_LABELS[varName]}
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              {isModified && (
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  title="Reset to default"
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <ArrowPathIcon className="h-3.5 w-3.5" />
+                </button>
+              )}
+              <label
+                className="relative cursor-pointer"
+                title={`${COLOR_VAR_LABELS[varName]}: ${currentValue}`}
+              >
+                <div
+                  className="h-6 w-6 rounded border border-border/70 shadow-sm"
+                  style={{ backgroundColor: hexValue }}
+                />
+                <input
+                  type="color"
+                  value={hexValue}
+                  onChange={handleChange}
+                  className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                />
+              </label>
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }
