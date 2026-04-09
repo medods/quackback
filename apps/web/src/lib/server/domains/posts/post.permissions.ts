@@ -289,12 +289,13 @@ async function hasCommentsFromOthers(
   authorPrincipalId: PrincipalId | null | undefined
 ): Promise<boolean> {
   if (!authorPrincipalId) return false // Anonymous author can't have "other" comments
+  const authorPrincipalUuid = toUuid(authorPrincipalId)
 
   // Find any comment not from the author and not deleted (LIMIT 1 is faster than COUNT)
   const otherComment = await db.query.comments.findFirst({
     where: and(
       eq(comments.postId, postId),
-      sql`${comments.principalId} != ${authorPrincipalId}`,
+      sql`${comments.principalId} != ${authorPrincipalUuid}::uuid`,
       isNull(comments.deletedAt)
     ),
   })
