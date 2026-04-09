@@ -70,6 +70,21 @@ export function canManageWidgetPost(
   return !!postPrincipalId && !!viewerPrincipalId && postPrincipalId === viewerPrincipalId
 }
 
+function isUnsafeWidgetErrorMessage(message: string): boolean {
+  const normalized = message.toLowerCase()
+  return (
+    normalized.includes('failed query') ||
+    normalized.includes('sql') ||
+    normalized.includes('select ') ||
+    normalized.includes('insert ') ||
+    normalized.includes('update ') ||
+    normalized.includes('delete ') ||
+    normalized.includes('from "') ||
+    normalized.includes('where (') ||
+    normalized.includes('params:')
+  )
+}
+
 export function WidgetPostDetail({
   postId,
   statuses,
@@ -245,13 +260,16 @@ export function WidgetPostDetail({
         queryClient.invalidateQueries({ queryKey: widgetQueryKeys.postDetail.all })
       })
     } catch (err) {
+      const fallbackMessage = intl.formatMessage({
+        id: 'widget.postDetail.error.editFailed',
+        defaultMessage: 'Could not edit post. Please try again.',
+      })
       setPostActionError(
         err instanceof Error
-          ? err.message
-          : intl.formatMessage({
-              id: 'widget.postDetail.error.somethingWrong',
-              defaultMessage: 'Something went wrong',
-            })
+          ? isUnsafeWidgetErrorMessage(err.message)
+            ? fallbackMessage
+            : err.message
+          : fallbackMessage
       )
     } finally {
       setIsSavingPost(false)
@@ -287,13 +305,16 @@ export function WidgetPostDetail({
         queryClient.invalidateQueries({ queryKey: widgetQueryKeys.postDetail.all })
       })
     } catch (err) {
+      const fallbackMessage = intl.formatMessage({
+        id: 'widget.postDetail.error.requestFailed',
+        defaultMessage: 'Request failed. Please try again.',
+      })
       setPostActionError(
         err instanceof Error
-          ? err.message
-          : intl.formatMessage({
-              id: 'widget.postDetail.error.somethingWrong',
-              defaultMessage: 'Something went wrong',
-            })
+          ? isUnsafeWidgetErrorMessage(err.message)
+            ? fallbackMessage
+            : err.message
+          : fallbackMessage
       )
     } finally {
       setIsDeletingPost(false)

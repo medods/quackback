@@ -34,7 +34,7 @@ import { getDefaultStatus } from '@/lib/server/domains/statuses/status.service'
 import { getMemberByUser } from '@/lib/server/domains/principals/principal.service'
 import { listPublicRoadmaps } from '@/lib/server/domains/roadmaps/roadmap.service'
 import { getPublicRoadmapPosts } from '@/lib/server/domains/roadmaps/roadmap.query'
-import { ForbiddenError, NotFoundError } from '@/lib/shared/errors'
+import { DomainException, ForbiddenError, NotFoundError } from '@/lib/shared/errors'
 
 // ============================================
 // Schemas
@@ -110,6 +110,27 @@ export type CreatePublicPostInput = z.infer<typeof createPublicPostSchema>
 export type GetPublicRoadmapPostsInput = z.infer<typeof getPublicRoadmapPostsSchema>
 export type GetRoadmapPostsByStatusInput = z.infer<typeof getRoadmapPostsByStatusSchema>
 export type GetVoteSidebarDataInput = z.infer<typeof getVoteSidebarDataSchema>
+
+function throwPublicSafeError(error: unknown, fallbackMessage: string): never {
+  if (error instanceof DomainException) {
+    throw error
+  }
+
+  if (error instanceof Error) {
+    const message = error.message.toLowerCase()
+    // Keep auth/rate-limit style messages that are safe and actionable for users.
+    if (
+      message.includes('authentication required') ||
+      message.includes('access denied') ||
+      message.includes('anonymous') ||
+      message.includes('too many')
+    ) {
+      throw error
+    }
+  }
+
+  throw new Error(fallbackMessage)
+}
 
 // ============================================
 // Server Functions
@@ -263,7 +284,7 @@ export const userEditPostFn = createServerFn({ method: 'POST' })
       }
     } catch (error) {
       console.error(`[fn:public-posts] ❌ userEditPostFn failed:`, error)
-      throw error
+      throwPublicSafeError(error, 'Failed to edit post')
     }
   })
 
@@ -293,7 +314,7 @@ export const userDeletePostFn = createServerFn({ method: 'POST' })
       return { id: postId }
     } catch (error) {
       console.error(`[fn:public-posts] ❌ userDeletePostFn failed:`, error)
-      throw error
+      throwPublicSafeError(error, 'Failed to delete post')
     }
   })
 

@@ -45,6 +45,8 @@
   "widget.home.scroll.ariaRight": "Прокрутить вправо",
   "widget.postDetail.error.couldNotLoad": "Не удалось загрузить предложение",
   "widget.postDetail.error.somethingWrong": "Что-то пошло не так",
+  "widget.postDetail.error.editFailed": "Ошибка при редактировании. Попробуйте снова.",
+  "widget.postDetail.error.requestFailed": "Ошибка при выполнении запроса. Попробуйте снова.",
   "widget.postDetail.authorFallback": "Аноним",
   "widget.postDetail.officialResponse": "Официальный ответ",
   "widget.postDetail.comments": "{count, plural, one {# комментарий} few {# комментария} many {# комментариев} other {# комментария}}",

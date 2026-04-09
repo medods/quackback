@@ -45,6 +45,8 @@
   "widget.home.scroll.ariaRight": "Scroll right",
   "widget.postDetail.error.couldNotLoad": "Could not load post",
   "widget.postDetail.error.somethingWrong": "Something went wrong",
+  "widget.postDetail.error.editFailed": "Could not edit post. Please try again.",
+  "widget.postDetail.error.requestFailed": "Request failed. Please try again.",
   "widget.postDetail.authorFallback": "Anonymous",
   "widget.postDetail.officialResponse": "Official response",
   "widget.postDetail.comments": "{count, plural, one {# comment} other {# comments}}",
