@@ -1,4 +1,5 @@
 import { useForm } from 'react-hook-form'
+import { useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { FormError } from '@/components/shared/form-error'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
@@ -36,6 +37,12 @@ export function BoardAccessForm({ board }: BoardAccessFormProps) {
       isPublic: board.isPublic,
     },
   })
+
+  useEffect(() => {
+    form.reset({
+      isPublic: board.isPublic,
+    })
+  }, [board.id, board.isPublic, form])
 
   async function onSubmit(data: FormValues) {
     mutation.mutate({

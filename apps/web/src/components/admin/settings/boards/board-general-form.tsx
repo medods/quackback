@@ -1,4 +1,5 @@
 import { useForm } from 'react-hook-form'
+import { useEffect } from 'react'
 import { standardSchemaResolver } from '@hookform/resolvers/standard-schema'
 import { updateBoardSchema, type UpdateBoardInput } from '@/lib/shared/schemas/boards'
 import { Input } from '@/components/ui/input'
@@ -37,6 +38,13 @@ export function BoardGeneralForm({ board }: BoardGeneralFormProps) {
       description: board.description || '',
     },
   })
+
+  useEffect(() => {
+    form.reset({
+      name: board.name,
+      description: board.description || '',
+    })
+  }, [board.id, board.name, board.description, form])
 
   function onSubmit(data: UpdateBoardInput) {
     mutation.mutate({
