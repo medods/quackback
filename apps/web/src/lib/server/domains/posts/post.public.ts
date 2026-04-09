@@ -51,15 +51,19 @@ type SortOrder = 'top' | 'least' | 'new' | 'old' | 'trending'
 function getPostSortOrder(sort: SortOrder) {
   switch (sort) {
     case 'new':
-      return desc(posts.createdAt)
+      return [desc(posts.createdAt), desc(posts.id)]
     case 'old':
-      return asc(posts.createdAt)
+      return [asc(posts.createdAt), asc(posts.id)]
     case 'least':
-      return asc(posts.voteCount)
+      return [asc(posts.voteCount), desc(posts.createdAt), desc(posts.id)]
     case 'trending':
-      return sql`(${posts.voteCount} / GREATEST(1, EXTRACT(EPOCH FROM (NOW() - ${posts.createdAt})) / 86400)) DESC`
+      return [
+        sql`(${posts.voteCount} / GREATEST(1, EXTRACT(EPOCH FROM (NOW() - ${posts.createdAt})) / 86400)) DESC`,
+        desc(posts.createdAt),
+        desc(posts.id),
+      ]
     default:
-      return desc(posts.voteCount)
+      return [desc(posts.voteCount), desc(posts.createdAt), desc(posts.id)]
   }
 }
 
@@ -218,7 +222,7 @@ export async function listPublicPostsWithVotesAndAvatars(
     .from(posts)
     .innerJoin(boards, eq(posts.boardId, boards.id))
     .where(and(...conditions))
-    .orderBy(orderBy)
+    .orderBy(...orderBy)
     .limit(limit + 1)
     .offset(offset)
 
@@ -280,7 +284,7 @@ export async function listPublicPosts(params: PostListParams): Promise<PublicPos
     .from(posts)
     .innerJoin(boards, eq(posts.boardId, boards.id))
     .where(and(...conditions))
-    .orderBy(orderBy)
+    .orderBy(...orderBy)
     .limit(limit + 1)
     .offset(offset)
 
