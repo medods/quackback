@@ -590,64 +590,66 @@ export function WidgetPostDetail({
         )}
 
         {/* Comments section */}
-        <div className="border-t border-border/50 pt-3">
-          <div className="flex items-center gap-1.5 mb-3">
-            <ChatBubbleLeftIcon className="h-3.5 w-3.5 text-muted-foreground/50" />
-            <span className="text-xs font-medium text-muted-foreground">
-              <FormattedMessage
-                id="widget.postDetail.comments"
-                defaultMessage="{count, plural, one {# comment} other {# comments}}"
-                values={{ count: liveCommentCount }}
-              />
-            </span>
-          </div>
+        {!isEditingPost && (
+          <div className="border-t border-border/50 pt-3">
+            <div className="flex items-center gap-1.5 mb-3">
+              <ChatBubbleLeftIcon className="h-3.5 w-3.5 text-muted-foreground/50" />
+              <span className="text-xs font-medium text-muted-foreground">
+                <FormattedMessage
+                  id="widget.postDetail.comments"
+                  defaultMessage="{count, plural, one {# comment} other {# comments}}"
+                  values={{ count: liveCommentCount }}
+                />
+              </span>
+            </div>
 
-          {/* Root comment form — unified: textarea + email (when anonymous) + single Post */}
-          {!post.isCommentsLocked && (!hmacRequired || canComment) && (
-            <WidgetCommentForm
-              isIdentified={isIdentified}
-              user={user}
-              onSubmit={submitComment}
-              identifyWithEmail={identifyWithEmail}
+            {/* Root comment form — unified: textarea + email (when anonymous) + single Post */}
+            {!post.isCommentsLocked && (!hmacRequired || canComment) && (
+              <WidgetCommentForm
+                isIdentified={isIdentified}
+                user={user}
+                onSubmit={submitComment}
+                identifyWithEmail={identifyWithEmail}
+                canUploadImages={canUploadImages}
+                onImageUpload={canUploadImages ? uploadImage : undefined}
+              />
+            )}
+
+            {!post.isCommentsLocked && hmacRequired && !canComment && (
+              <button
+                type="button"
+                onClick={handleViewOnPortal}
+                className="text-[10px] text-primary hover:text-primary/80 transition-colors mb-3"
+              >
+                <FormattedMessage
+                  id="widget.postDetail.loginToComment"
+                  defaultMessage="Log in to join the conversation"
+                />
+              </button>
+            )}
+
+            {post.isCommentsLocked && (
+              <p className="text-[10px] text-muted-foreground/50 mb-3">
+                <FormattedMessage
+                  id="widget.postDetail.commentsLocked"
+                  defaultMessage="Comments are locked on this post"
+                />
+              </p>
+            )}
+
+            <WidgetCommentList
+              comments={post.comments}
+              pinnedCommentId={post.pinnedCommentId}
+              viewerPrincipalId={viewerPrincipalId}
+              canComment={canComment && !post.isCommentsLocked}
+              onSubmitComment={handleSubmitReply}
+              onEditComment={handleEditComment}
+              onDeleteComment={handleDeleteComment}
               canUploadImages={canUploadImages}
               onImageUpload={canUploadImages ? uploadImage : undefined}
             />
-          )}
-
-          {!post.isCommentsLocked && hmacRequired && !canComment && (
-            <button
-              type="button"
-              onClick={handleViewOnPortal}
-              className="text-[10px] text-primary hover:text-primary/80 transition-colors mb-3"
-            >
-              <FormattedMessage
-                id="widget.postDetail.loginToComment"
-                defaultMessage="Log in to join the conversation"
-              />
-            </button>
-          )}
-
-          {post.isCommentsLocked && (
-            <p className="text-[10px] text-muted-foreground/50 mb-3">
-              <FormattedMessage
-                id="widget.postDetail.commentsLocked"
-                defaultMessage="Comments are locked on this post"
-              />
-            </p>
-          )}
-
-          <WidgetCommentList
-            comments={post.comments}
-            pinnedCommentId={post.pinnedCommentId}
-            viewerPrincipalId={viewerPrincipalId}
-            canComment={canComment && !post.isCommentsLocked}
-            onSubmitComment={handleSubmitReply}
-            onEditComment={handleEditComment}
-            onDeleteComment={handleDeleteComment}
-            canUploadImages={canUploadImages}
-            onImageUpload={canUploadImages ? uploadImage : undefined}
-          />
-        </div>
+          </div>
+        )}
       </div>
     </ScrollArea>
   )
