@@ -114,3 +114,5 @@ export {
 
 // Admin subscription mutations
 export { useUpdateVoterSubscription } from './admin-subscriptions'
+// Tag mutations
+export { useCreateTag, useUpdateTag, useDeleteTag } from './tags'

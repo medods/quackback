@@ -1,21 +1,22 @@
 import { useState } from 'react'
 import { Link, useRouterState } from '@tanstack/react-router'
 import {
+  AdjustmentsHorizontalIcon,
+  BeakerIcon,
+  BoltIcon,
+  ChatBubbleLeftRightIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
   Cog6ToothIcon,
-  UsersIcon,
-  Squares2X2Icon,
+  CommandLineIcon,
+  KeyIcon,
   LockClosedIcon,
   PaintBrushIcon,
   PuzzlePieceIcon,
-  ChevronUpIcon,
-  ChevronDownIcon,
-  KeyIcon,
-  BoltIcon,
-  CommandLineIcon,
-  ChatBubbleLeftRightIcon,
-  AdjustmentsHorizontalIcon,
   ShieldCheckIcon,
-  BeakerIcon,
+  Squares2X2Icon,
+  TagIcon,
+  UsersIcon,
 } from '@heroicons/react/24/solid'
 import { cn } from '@/lib/shared/utils'
 
@@ -42,8 +43,9 @@ const navSections: NavSection[] = [
     label: 'Feedback',
     items: [
       { label: 'Boards', to: '/admin/settings/boards', icon: Squares2X2Icon },
-      { label: 'Statuses', to: '/admin/settings/statuses', icon: Cog6ToothIcon },
       { label: 'Permissions', to: '/admin/settings/permissions', icon: ShieldCheckIcon },
+      { label: 'Statuses', to: '/admin/settings/statuses', icon: Cog6ToothIcon },
+      { label: 'Tags', to: '/admin/settings/tags', icon: TagIcon },
       { label: 'Widget', to: '/admin/settings/widget', icon: ChatBubbleLeftRightIcon },
     ],
   },
