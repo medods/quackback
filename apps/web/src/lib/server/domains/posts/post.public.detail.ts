@@ -15,7 +15,7 @@ import {
   roadmaps,
   principal as principalTable,
 } from '@/lib/server/db'
-import { toUuid, type PostId, type CommentId, type PrincipalId } from '@quackback/ids'
+import { fromUuid, toUuid, type PostId, type CommentId, type PrincipalId } from '@quackback/ids'
 import { buildCommentTree, toStatusChange } from '@/lib/shared'
 import type { PublicPostDetail, PublicComment, PinnedComment } from './post.types'
 import { resolveAvatarUrl, parseJson, parseAvatarData } from './post.public'
@@ -186,14 +186,16 @@ export async function getPublicPostDetail(
     id: comment.id,
     postId: comment.post_id,
     parentId: comment.parent_id,
-    principalId: comment.principal_id,
+    principalId: fromUuid('principal', comment.principal_id),
     authorName: comment.author_name,
     content: comment.content,
     isTeamMember: comment.is_team_member,
     isPrivate: comment.is_private,
     createdAt: ensureDate(comment.created_at),
     deletedAt: comment.deleted_at ? ensureDate(comment.deleted_at) : null,
-    deletedByPrincipalId: comment.deleted_by_principal_id,
+    deletedByPrincipalId: comment.deleted_by_principal_id
+      ? fromUuid('principal', comment.deleted_by_principal_id)
+      : null,
     avatarUrl: resolveAvatarUrl({
       avatarKey: comment.avatar_key,
       avatarUrl: comment.avatar_url,
@@ -243,7 +245,7 @@ export async function getPublicPostDetail(
         id: pinnedCommentData.id as CommentId,
         content: pinnedCommentData.content,
         authorName: pinnedCommentData.author_name,
-        principalId: pinnedCommentData.principal_id as PrincipalId,
+        principalId: fromUuid('principal', pinnedCommentData.principal_id),
         avatarUrl: resolveAvatarUrl({
           avatarKey: pinnedCommentData.avatar_key,
           avatarUrl: pinnedCommentData.avatar_url,
