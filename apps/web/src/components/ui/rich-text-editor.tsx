@@ -35,6 +35,7 @@ import {
   useImperativeHandle,
   useRef,
 } from 'react'
+import { useIntl } from 'react-intl'
 import { computePosition, flip, shift, offset } from '@floating-ui/dom'
 import DOMPurify from 'dompurify'
 import { cn } from '@/lib/shared/utils'
@@ -1642,6 +1643,20 @@ function MenuBar({
   toolbarVariant = 'default',
   defaultImageWidth,
 }: MenuBarProps) {
+  const intl = useIntl()
+  const insertImageTitle = intl.formatMessage({
+    id: 'editor.toolbar.insertImage',
+    defaultMessage: 'Insert Image',
+  })
+  const undoTitle = intl.formatMessage({
+    id: 'editor.toolbar.undo',
+    defaultMessage: 'Undo',
+  })
+  const redoTitle = intl.formatMessage({
+    id: 'editor.toolbar.redo',
+    defaultMessage: 'Redo',
+  })
+
   const setLink = useCallback(() => {
     const previousUrl = editor.getAttributes('link').href
     let url = window.prompt('URL', previousUrl)
@@ -1692,7 +1707,7 @@ function MenuBar({
             icon={<ImagePlus className="size-4" />}
             onClick={insertImage}
             disabled={disabled}
-            title="Insert Image"
+            title={insertImageTitle}
           />
         )}
         <div className="flex-1" />
@@ -1700,13 +1715,13 @@ function MenuBar({
           icon={<ArrowUturnLeftIcon className="size-4" />}
           onClick={() => editor.chain().focus().undo().run()}
           disabled={disabled || !canUndo}
-          title="Undo"
+          title={undoTitle}
         />
         <ToolbarButton
           icon={<ArrowUturnRightIcon className="size-4" />}
           onClick={() => editor.chain().focus().redo().run()}
           disabled={disabled || !canRedo}
-          title="Redo"
+          title={redoTitle}
         />
       </div>
     )
@@ -1802,7 +1817,7 @@ function MenuBar({
           icon={<ImagePlus className="size-4" />}
           onClick={insertImage}
           disabled={disabled}
-          title="Insert Image"
+          title={insertImageTitle}
         />
       )}
 
@@ -1813,13 +1828,13 @@ function MenuBar({
         icon={<ArrowUturnLeftIcon className="size-4" />}
         onClick={() => editor.chain().focus().undo().run()}
         disabled={disabled || !canUndo}
-        title="Undo"
+        title={undoTitle}
       />
       <ToolbarButton
         icon={<ArrowUturnRightIcon className="size-4" />}
         onClick={() => editor.chain().focus().redo().run()}
         disabled={disabled || !canRedo}
-        title="Redo"
+        title={redoTitle}
       />
     </div>
   )

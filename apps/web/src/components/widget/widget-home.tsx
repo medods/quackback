@@ -291,10 +291,9 @@ export function WidgetHome({
 
   // Search query for popular ideas — replaces infinite list when active
   const { data: popularSearchData, isFetching: isPopularSearchFetching } = useQuery({
-    queryKey: ['widget', 'search', 'popular', debouncedPopularSearch, activeBoardSlug ?? 'all'],
+    queryKey: ['widget', 'search', 'popular', debouncedPopularSearch],
     queryFn: async () => {
       const params = new URLSearchParams({ q: normalizedDebouncedPopularSearch, limit: '20' })
-      if (activeBoardSlug) params.set('board', activeBoardSlug)
       const res = await fetch(`/api/widget/search?${params}`)
       const json = await res.json()
       return { posts: (json.data?.posts ?? []) as WidgetPost[] }

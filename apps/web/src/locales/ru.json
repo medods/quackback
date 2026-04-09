@@ -326,5 +326,8 @@
   "portal.commentForm.submitWithStatus": "Отправить и установить статус {statusName}",
   "portal.commentForm.reply": "Ответить",
   "portal.commentForm.submitting": "Отправка...",
-  "portal.commentForm.errorPost": "Не удалось отправить комментарий"
+  "portal.commentForm.errorPost": "Не удалось отправить комментарий",
+  "editor.toolbar.insertImage": "Вставить изображение",
+  "editor.toolbar.undo": "Отменить",
+  "editor.toolbar.redo": "Повторить"
 }

@@ -326,5 +326,8 @@
   "portal.commentForm.submitWithStatus": "Comment & mark {statusName}",
   "portal.commentForm.reply": "Reply",
   "portal.commentForm.submitting": "Posting...",
-  "portal.commentForm.errorPost": "Failed to post comment"
+  "portal.commentForm.errorPost": "Failed to post comment",
+  "editor.toolbar.insertImage": "Insert Image",
+  "editor.toolbar.undo": "Undo",
+  "editor.toolbar.redo": "Redo"
 }
