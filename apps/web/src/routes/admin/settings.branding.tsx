@@ -295,7 +295,7 @@ function BrandingPage() {
                   onClick={state.setManualMode}
                   className={cn(
                     'flex flex-col items-center gap-1.5 px-2 py-2.5 rounded-lg border text-center text-xs font-medium transition-colors',
-                    state.isManualTheme
+                    state.isManualTheme || state.activePresetId === null
                       ? 'border-primary bg-primary/5 ring-1 ring-primary text-foreground'
                       : 'border-border bg-background text-foreground hover:border-primary/50 hover:bg-muted/50'
                   )}
@@ -306,7 +306,7 @@ function BrandingPage() {
                 </button>
               </div>
 
-              {state.isManualTheme && (
+              {(state.isManualTheme || state.activePresetId === null) && (
                 <ManualThemeEditor
                   variables={state.parsedCssVariables.light}
                   defaults={state.manualDefaults}
@@ -684,7 +684,7 @@ function ManualThemeEditor({ variables, defaults, onColorChange }: ManualThemeEd
   )
 
   return (
-    <div className="space-y-1.5 pt-1">
+    <div className="grid grid-cols-2 gap-y-1.5 pt-1" style={{ columnGap: '100px' }}>
       {colorVarNames.map((varName) => {
         const currentValue = variables[varName] ?? ''
         const defaultValue = defaults[varName] ?? currentValue
