@@ -20,25 +20,12 @@ import type { TagId } from '@quackback/ids'
 
 // ─── Tag Form Dialog ──────────────────────────────────────────────────────────
 
-const PRESET_COLORS = [
-  '#ef4444',
-  '#f97316',
-  '#eab308',
-  '#22c55e',
-  '#14b8a6',
-  '#3b82f6',
-  '#8b5cf6',
-  '#ec4899',
-  '#6b7280',
-  '#1e293b',
-]
-
 interface TagFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  initialValues?: { id?: TagId; name?: string; color?: string }
+  initialValues?: { id?: TagId; name?: string }
   existingNames: string[]
-  onSubmit: (name: string, color: string) => Promise<void>
+  onSubmit: (name: string) => Promise<void>
   isPending?: boolean
 }
 
@@ -52,13 +39,11 @@ function TagFormDialog({
 }: TagFormDialogProps) {
   const isEditing = !!initialValues?.id
   const [name, setName] = useState(initialValues?.name ?? '')
-  const [color, setColor] = useState(initialValues?.color ?? PRESET_COLORS[0])
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (open) {
       setName(initialValues?.name ?? '')
-      setColor(initialValues?.color ?? PRESET_COLORS[0])
       setError(null)
     }
   }, [open])
@@ -80,7 +65,7 @@ function TagFormDialog({
       setError(validationError)
       return
     }
-    await onSubmit(name.trim(), color)
+    await onSubmit(name.trim())
   }
 
   const handleNameChange = (value: string) => {
@@ -105,48 +90,6 @@ function TagFormDialog({
               autoFocus
             />
             {error && <p className="text-xs text-destructive">{error}</p>}
-          </div>
-          <div className="space-y-1.5">
-            <Label>Color</Label>
-            <div className="flex flex-wrap gap-2">
-              {PRESET_COLORS.map((preset) => (
-                <button
-                  key={preset}
-                  type="button"
-                  title={preset}
-                  onClick={() => setColor(preset)}
-                  className="h-6 w-6 rounded-full border-2 transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
-                  style={{
-                    backgroundColor: preset,
-                    borderColor: color === preset ? 'white' : 'transparent',
-                    boxShadow: color === preset ? `0 0 0 2px ${preset}` : undefined,
-                  }}
-                />
-              ))}
-              <label
-                title="Custom color"
-                className="h-6 w-6 rounded-full border-2 border-dashed border-muted-foreground/50 flex items-center justify-center cursor-pointer hover:border-muted-foreground transition-colors overflow-hidden"
-                style={
-                  !PRESET_COLORS.includes(color)
-                    ? {
-                        backgroundColor: color,
-                        borderColor: 'white',
-                        boxShadow: `0 0 0 2px ${color}`,
-                      }
-                    : {}
-                }
-              >
-                <input
-                  type="color"
-                  value={color}
-                  onChange={(e) => setColor(e.target.value)}
-                  className="opacity-0 absolute w-px h-px"
-                />
-                {PRESET_COLORS.includes(color) && (
-                  <span className="text-[10px] text-muted-foreground">+</span>
-                )}
-              </label>
-            </div>
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
@@ -189,14 +132,14 @@ export function TagList({ initialTags }: TagListProps) {
 
   const filtered = activeTags.filter((t) => t.name.toLowerCase().includes(search.toLowerCase()))
 
-  const handleCreate = async (name: string, color: string) => {
-    await createTag.mutateAsync({ name, color })
+  const handleCreate = async (name: string) => {
+    await createTag.mutateAsync({ name })
     setCreateOpen(false)
   }
 
-  const handleUpdate = async (name: string, color: string) => {
+  const handleUpdate = async (name: string) => {
     if (!editTarget) return
-    await updateTag.mutateAsync({ id: editTarget.id as TagId, name, color })
+    await updateTag.mutateAsync({ id: editTarget.id as TagId, name })
     setEditTarget(null)
   }
 
@@ -246,10 +189,6 @@ export function TagList({ initialTags }: TagListProps) {
           {filtered.map((tag) => (
             <li key={tag.id} className="flex items-center justify-between gap-3 px-4 py-3">
               <div className="flex items-center gap-2 min-w-0">
-                <span
-                  className="h-2.5 w-2.5 rounded-full shrink-0"
-                  style={{ backgroundColor: tag.color ?? '#6b7280' }}
-                />
                 <span className="text-sm font-medium truncate">{tag.name}</span>
               </div>
               <div className="flex items-center gap-1 shrink-0">
@@ -297,7 +236,6 @@ export function TagList({ initialTags }: TagListProps) {
             ? {
                 id: editTarget.id as TagId,
                 name: editTarget.name,
-                color: editTarget.color ?? undefined,
               }
             : undefined
         }
