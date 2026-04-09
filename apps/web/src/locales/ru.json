@@ -105,6 +105,9 @@
   "widget.emailCapture.placeholder": "you@example.com",
   "widget.emailCapture.submit": "Продолжить",
   "widget.emailCapture.error": "Что-то пошло не так. Попробуйте снова.",
+  "widget.success.feedbackThanks": "Спасибо за обратную связь!",
+  "widget.success.ideaSubmitted": "Ваше предложение отправлено.",
+  "widget.success.backToIdeas": "Назад к списку",
   "widget.voteButton.ariaVote": "Проголосовать ({count, plural, one {# голос} few {# голоса} many {# голосов} other {# голоса}})",
   "widget.voteButton.ariaRemoveVote": "Убрать голос ({count, plural, one {# голос} few {# голоса} many {# голосов} other {# голоса}})",
 

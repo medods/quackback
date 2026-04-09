@@ -105,6 +105,9 @@
   "widget.emailCapture.placeholder": "you@example.com",
   "widget.emailCapture.submit": "Go",
   "widget.emailCapture.error": "Something went wrong. Please try again.",
+  "widget.success.feedbackThanks": "Thanks for your feedback!",
+  "widget.success.ideaSubmitted": "Your idea has been submitted.",
+  "widget.success.backToIdeas": "Back to ideas",
   "widget.voteButton.ariaVote": "Vote ({count, plural, one {# vote} other {# votes}})",
   "widget.voteButton.ariaRemoveVote": "Remove vote ({count, plural, one {# vote} other {# votes}})",
 

@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CheckCircleIcon } from '@heroicons/react/24/solid'
 import { ArrowLeftIcon } from '@heroicons/react/24/outline'
+import { useIntl } from 'react-intl'
 import { WidgetVoteButton } from '@/components/widget/widget-vote-button'
 import type { PostId } from '@quackback/ids'
 import { WidgetShell, type WidgetTab } from '@/components/widget/widget-shell'
@@ -108,6 +109,7 @@ interface WidgetOpenMessageData {
 function WidgetPage() {
   const { posts, postsHasMore, statuses, boards, orgSlug, features, tabs, imageUploadsInWidget } =
     Route.useLoaderData()
+  const intl = useIntl()
   const { isIdentified, ensureSession } = useWidgetAuth()
   const canVote = isIdentified || features.anonymousVoting
 
@@ -381,8 +383,18 @@ function WidgetPage() {
                   <CheckCircleIcon className="w-4.5 h-4.5 text-primary" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-foreground">Thanks for your feedback!</p>
-                  <p className="text-[11px] text-muted-foreground">Your idea has been submitted.</p>
+                  <p className="text-sm font-semibold text-foreground">
+                    {intl.formatMessage({
+                      id: 'widget.success.feedbackThanks',
+                      defaultMessage: 'Thanks for your feedback!',
+                    })}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {intl.formatMessage({
+                      id: 'widget.success.ideaSubmitted',
+                      defaultMessage: 'Your idea has been submitted.',
+                    })}
+                  </p>
                 </div>
               </div>
 
@@ -430,7 +442,10 @@ function WidgetPage() {
                   className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium text-foreground bg-muted/30 hover:bg-muted/50 rounded-lg border border-border/50 transition-colors"
                 >
                   <ArrowLeftIcon className="w-3.5 h-3.5" />
-                  Back to ideas
+                  {intl.formatMessage({
+                    id: 'widget.success.backToIdeas',
+                    defaultMessage: 'Back to ideas',
+                  })}
                 </button>
               </div>
             </div>
