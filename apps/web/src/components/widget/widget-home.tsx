@@ -809,7 +809,7 @@ export function WidgetHome({
                       id: 'widget.home.popular.search.placeholder',
                       defaultMessage: 'Search ideas...',
                     })}
-                    className="flex-1 min-w-0 h-7 bg-transparent text-xs text-foreground placeholder:text-[13px] placeholder:text-muted-foreground/50 outline-none focus:caret-primary"
+                    className="flex-1 min-w-0 h-7 bg-transparent text-xs text-foreground placeholder:text-[12px] placeholder:text-muted-foreground/50 outline-none focus:caret-primary"
                   />
                   <button
                     type="button"
@@ -909,7 +909,7 @@ export function WidgetHome({
                       })}
                     >
                       <MagnifyingGlassIcon className="w-4 h-4" />
-                      <span className="text-[13px]">Поиск</span>
+                      <span className="text-[12px]">Поиск</span>
                     </button>
                   </div>
                 </>
