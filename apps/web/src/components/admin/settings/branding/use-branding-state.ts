@@ -30,6 +30,13 @@ export const FONT_OPTIONS = [
     googleName: null,
   },
   {
+    id: 'verdana',
+    name: 'Verdana',
+    value: 'Verdana, Geneva, Tahoma, sans-serif',
+    category: 'System',
+    googleName: null,
+  },
+  {
     id: 'roboto',
     name: 'Roboto',
     value: '"Roboto", ui-sans-serif, system-ui, sans-serif',
