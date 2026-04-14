@@ -911,7 +911,7 @@ export function WidgetHome({
                     <button
                       type="button"
                       onClick={() => setPopularSearchOpen(true)}
-                      className="flex items-center gap-1 text-primary/70 hover:text-primary transition-colors"
+                      className="flex items-center gap-1 text-primary transition-colors"
                       aria-label={intl.formatMessage({
                         id: 'widget.home.popular.search.aria',
                         defaultMessage: 'Search ideas',
