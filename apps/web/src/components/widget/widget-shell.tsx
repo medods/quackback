@@ -1,6 +1,7 @@
 import { type ReactNode } from 'react'
 import {
   ArrowLeftIcon,
+  BellIcon,
   BookOpenIcon,
   LightBulbIcon,
   NewspaperIcon,
@@ -8,7 +9,7 @@ import {
 import { FormattedMessage, useIntl } from 'react-intl'
 import { cn } from '@/lib/shared/utils'
 
-export type WidgetTab = 'feedback' | 'changelog' | 'help'
+export type WidgetTab = 'feedback' | 'changelog' | 'help' | 'notifications'
 
 const TAB_CONFIG: {
   tab: WidgetTab
@@ -28,6 +29,12 @@ const TAB_CONFIG: {
     labelId: 'widget.shell.tab.changelog',
     defaultLabel: 'Changelog',
   },
+  {
+    tab: 'notifications',
+    icon: BellIcon,
+    labelId: 'widget.shell.tab.notifications',
+    defaultLabel: 'Notifications',
+  },
   { tab: 'help', icon: BookOpenIcon, labelId: 'widget.shell.tab.help', defaultLabel: 'Help' },
 ]
 
@@ -36,7 +43,8 @@ interface WidgetShellProps {
   activeTab: WidgetTab
   onTabChange: (tab: WidgetTab) => void
   onBack?: () => void
-  enabledTabs?: { feedback?: boolean; changelog?: boolean; help?: boolean }
+  enabledTabs?: { feedback?: boolean; changelog?: boolean; help?: boolean; notifications?: boolean }
+  notificationsUnreadCount?: number
   children: ReactNode
 }
 
@@ -45,13 +53,17 @@ export function WidgetShell({
   activeTab,
   onTabChange,
   onBack,
-  enabledTabs = { feedback: true, changelog: false, help: false },
+  enabledTabs = { feedback: true, changelog: false, help: false, notifications: true },
+  notificationsUnreadCount = 0,
   children,
 }: WidgetShellProps) {
   const intl = useIntl()
-  const enabledCount = [enabledTabs.feedback, enabledTabs.changelog, enabledTabs.help].filter(
-    Boolean
-  ).length
+  const enabledCount = [
+    enabledTabs.feedback,
+    enabledTabs.changelog,
+    enabledTabs.notifications,
+    enabledTabs.help,
+  ].filter(Boolean).length
   const showTabBar = enabledCount > 1
 
   return (
@@ -93,7 +105,15 @@ export function WidgetShell({
                       : 'text-muted-foreground/60 hover:text-muted-foreground'
                   )}
                 >
-                  <Icon className="w-5 h-5" />
+                  <div className="relative">
+                    <Icon className="w-5 h-5" />
+                    {tab === 'notifications' && notificationsUnreadCount > 0 && (
+                      <span
+                        aria-hidden="true"
+                        className="absolute -right-1 -top-0.5 h-2 w-2 rounded-full bg-primary"
+                      />
+                    )}
+                  </div>
                   <span className="text-xs font-medium">
                     <FormattedMessage id={labelId} defaultMessage={defaultLabel} />
                   </span>

@@ -134,6 +134,12 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
       if (sort) r.sort = sort;
       return r;
     }
+    if (view === "help") {
+      return { view: "help" };
+    }
+    if (view === "notifications") {
+      return { view: "notifications" };
+    }
 
     if (view === "post-detail") {
       var postId = asNonEmptyString(route.postId);
@@ -173,6 +179,12 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
       var o = { view: "changelog", __fromRouteSync: true };
       if (route.sort) o.sort = route.sort;
       return o;
+    }
+    if (route.view === "help") {
+      return { view: "help", __fromRouteSync: true };
+    }
+    if (route.view === "notifications") {
+      return { view: "notifications", __fromRouteSync: true };
     }
     if (route.view === "changelog-detail") {
       return { view: "changelog-detail", changelogId: route.changelogId, __fromRouteSync: true };

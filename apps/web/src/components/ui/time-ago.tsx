@@ -9,7 +9,7 @@ interface TimeAgoProps {
 }
 
 export function getDateFnsLocale(locale: string) {
-  if (locale === 'ru') return ru
+  if (locale.toLowerCase().startsWith('ru')) return ru
   return enUS
 }
 

@@ -60,6 +60,7 @@ export const getNotificationsFn = createServerFn({ method: 'GET' })
           body: n.body,
           postId: n.postId,
           commentId: n.commentId,
+          metadata: (n.metadata ?? null) as Record<string, object> | null,
           readAt: n.readAt?.toISOString() ?? null,
           archivedAt: n.archivedAt?.toISOString() ?? null,
           createdAt: n.createdAt.toISOString(),

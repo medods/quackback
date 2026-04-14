@@ -40,6 +40,8 @@ export type WidgetRoute =
   | { view: 'post-detail'; postId: string; board?: string }
   | { view: 'changelog'; sort?: string }
   | { view: 'changelog-detail'; changelogId: string }
+  | { view: 'help' }
+  | { view: 'notifications' }
 
 // ---- Public SDK API ----
 
@@ -86,7 +88,14 @@ export type QuackbackIdentifyOptions =
 
 export type QuackbackOpenOptions =
   | {
-      view?: 'home' | 'new-post' | 'post-detail' | 'changelog' | 'changelog-detail' | 'help'
+      view?:
+        | 'home'
+        | 'new-post'
+        | 'post-detail'
+        | 'changelog'
+        | 'changelog-detail'
+        | 'help'
+        | 'notifications'
       title?: string
       board?: string
       postId?: string
@@ -125,7 +134,14 @@ export interface WidgetInboundMessages {
   'quackback:locale': string
   'quackback:open':
     | {
-        view?: 'home' | 'new-post' | 'post-detail' | 'changelog' | 'changelog-detail' | 'help'
+        view?:
+          | 'home'
+          | 'new-post'
+          | 'post-detail'
+          | 'changelog'
+          | 'changelog-detail'
+          | 'help'
+          | 'notifications'
         title?: string
         board?: string
         postId?: string

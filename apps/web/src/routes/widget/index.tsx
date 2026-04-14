@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { useQuery } from '@tanstack/react-query'
 import { z } from 'zod'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CheckCircleIcon } from '@heroicons/react/24/solid'
 import { ArrowLeftIcon } from '@heroicons/react/24/outline'
 import { useIntl } from 'react-intl'
@@ -13,9 +14,12 @@ import { WidgetChangelog } from '@/components/widget/widget-changelog'
 import { WidgetChangelogDetail } from '@/components/widget/widget-changelog-detail'
 import { WidgetHelp } from '@/components/widget/widget-help'
 import { WidgetHelpDetail } from '@/components/widget/widget-help-detail'
+import { WidgetNotifications } from '@/components/widget/widget-notifications'
 import { useWidgetAuth } from '@/components/widget/widget-auth-provider'
+import { getWidgetAuthHeaders } from '@/lib/client/widget-auth'
 import { portalQueries } from '@/lib/client/queries/portal'
 import { INITIAL_SESSION_VERSION, widgetQueryKeys } from '@/lib/client/hooks/use-widget-vote'
+import { getUnreadCountFn } from '@/lib/server/functions/notifications'
 import type { WidgetRoute } from '@/lib/shared/widget/types'
 
 const searchSchema = z.object({
@@ -76,6 +80,7 @@ export const Route = createFileRoute('/widget/')({
         feedback: settings?.publicWidgetConfig?.tabs?.feedback ?? true,
         changelog: settings?.publicWidgetConfig?.tabs?.changelog ?? false,
         help: (settings?.featureFlags as { helpCenter?: boolean } | undefined)?.helpCenter ?? false,
+        notifications: true,
       },
       imageUploadsInWidget: settings?.publicWidgetConfig?.imageUploadsInWidget ?? true,
       hideClosed,
@@ -90,8 +95,11 @@ type WidgetView =
   | 'success'
   | 'changelog'
   | 'changelog-detail'
+  | 'notifications'
   | 'help'
   | 'help-detail'
+
+type PostBackTarget = 'home' | 'notifications'
 
 interface SuccessPost {
   id: string
@@ -123,12 +131,25 @@ function WidgetPage() {
     hideClosed,
   } = Route.useLoaderData()
   const intl = useIntl()
-  const { isIdentified, ensureSession } = useWidgetAuth()
+  const { isIdentified, ensureSession, sessionVersion } = useWidgetAuth()
   const canVote = isIdentified || features.anonymousVoting
+  const hasWidgetToken = Boolean(getWidgetAuthHeaders().Authorization)
 
-  const initialTab: WidgetTab = tabs.feedback ? 'feedback' : tabs.changelog ? 'changelog' : 'help'
+  const initialTab: WidgetTab = tabs.feedback
+    ? 'feedback'
+    : tabs.changelog
+      ? 'changelog'
+      : tabs.help
+        ? 'help'
+        : 'notifications'
   const [view, setView] = useState<WidgetView>(
-    initialTab === 'changelog' ? 'changelog' : initialTab === 'help' ? 'help' : 'home'
+    initialTab === 'changelog'
+      ? 'changelog'
+      : initialTab === 'help'
+        ? 'help'
+        : initialTab === 'notifications'
+          ? 'notifications'
+          : 'home'
   )
   const [activeTab, setActiveTab] = useState<WidgetTab>(initialTab)
   const [successPost, setSuccessPost] = useState<SuccessPost | null>(null)
@@ -138,6 +159,8 @@ function WidgetPage() {
   const [selectedSort, setSelectedSort] = useState<string | null>(null)
   const [selectedBoard, setSelectedBoard] = useState<string | null>(null)
   const [createdPosts, setCreatedPosts] = useState<typeof posts>([])
+  const [postBackTarget, setPostBackTarget] = useState<PostBackTarget>('home')
+  const [shouldFetchUnreadBadge, setShouldFetchUnreadBadge] = useState(false)
   const suppressNextRouteSyncRef = useRef(false)
 
   const allPosts = useMemo(() => {
@@ -145,7 +168,34 @@ function WidgetPage() {
     return [...createdPosts, ...posts.filter((p) => !createdIds.has(p.id))]
   }, [posts, createdPosts])
 
+  useEffect(() => {
+    if (!tabs.notifications || !hasWidgetToken) {
+      setShouldFetchUnreadBadge(false)
+      return
+    }
+
+    startTransition(() => {
+      setShouldFetchUnreadBadge(true)
+    })
+  }, [hasWidgetToken, sessionVersion, tabs.notifications])
+
+  const { data: unreadCountData } = useQuery({
+    queryKey: ['widget', 'notifications', 'unread-count', sessionVersion],
+    queryFn: async () => {
+      const headers = getWidgetAuthHeaders()
+      if (!headers.Authorization) return { count: 0 }
+      return getUnreadCountFn({ headers })
+    },
+    enabled: tabs.notifications && hasWidgetToken && shouldFetchUnreadBadge,
+    staleTime: 60_000,
+    refetchInterval: hasWidgetToken ? 60_000 : false,
+    refetchOnWindowFocus: false,
+  })
+
+  const notificationsUnreadCount = unreadCountData?.count ?? 0
+
   const setDefaultView = useCallback(() => {
+    setPostBackTarget('home')
     if (tabs.feedback) {
       setActiveTab('feedback')
       setSelectedPostId(null)
@@ -158,10 +208,15 @@ function WidgetPage() {
       setView('changelog')
       return
     }
-    setActiveTab('help')
-    setSelectedHelpSlug(null)
-    setView('help')
-  }, [tabs.feedback, tabs.changelog])
+    if (tabs.help) {
+      setActiveTab('help')
+      setSelectedHelpSlug(null)
+      setView('help')
+      return
+    }
+    setActiveTab('notifications')
+    setView('notifications')
+  }, [tabs.feedback, tabs.changelog, tabs.help])
 
   const applyOpenOptions = useCallback(
     (opts: WidgetOpenMessageData) => {
@@ -173,6 +228,7 @@ function WidgetPage() {
         if (tabs.feedback && typeof opts.postId === 'string' && opts.postId.length > 0) {
           setActiveTab('feedback')
           setSelectedPostId(opts.postId)
+          setPostBackTarget('home')
           if (opts.board) setSelectedBoard(opts.board)
           setView('post-detail')
         } else {
@@ -208,6 +264,13 @@ function WidgetPage() {
         setActiveTab('help')
         setSelectedHelpSlug(null)
         setView('help')
+        return
+      }
+
+      if (opts.view === 'notifications') {
+        setActiveTab('notifications')
+        setPostBackTarget('home')
+        setView('notifications')
         return
       }
 
@@ -250,11 +313,15 @@ function WidgetPage() {
           ? { view: 'changelog-detail', changelogId: selectedChangelogId }
           : view === 'changelog'
             ? { view: 'changelog', ...(selectedSort ? { sort: selectedSort } : {}) }
-            : {
-                view: 'home',
-                ...(selectedSort ? { sort: selectedSort } : {}),
-                ...(selectedBoard ? { board: selectedBoard } : {}),
-              }
+            : view === 'help' || view === 'help-detail'
+              ? { view: 'help' }
+              : view === 'notifications'
+                ? { view: 'notifications' }
+                : {
+                    view: 'home',
+                    ...(selectedSort ? { sort: selectedSort } : {}),
+                    ...(selectedBoard ? { board: selectedBoard } : {}),
+                  }
 
     window.parent.postMessage({ type: 'quackback:route-change', data: route }, '*')
   }, [view, selectedPostId, selectedChangelogId, selectedSort, selectedBoard])
@@ -275,8 +342,9 @@ function WidgetPage() {
     setView('success')
   }, [])
 
-  const handlePostSelect = useCallback((postId: string) => {
+  const handlePostSelect = useCallback((postId: string, source: PostBackTarget = 'home') => {
     setSelectedPostId(postId)
+    setPostBackTarget(source)
     setView('post-detail')
   }, [])
 
@@ -291,20 +359,40 @@ function WidgetPage() {
       setView('help')
       return
     }
+
+    if (view === 'post-detail') {
+      setSelectedPostId(null)
+      if (postBackTarget === 'notifications' && tabs.notifications) {
+        setActiveTab('notifications')
+        setView('notifications')
+      } else {
+        setView('home')
+      }
+      setPostBackTarget('home')
+      return
+    }
+
     setSelectedPostId(null)
+    setPostBackTarget('home')
     setView('home')
-  }, [view])
+  }, [postBackTarget, tabs.notifications, view])
 
   const handleTabChange = useCallback((tab: WidgetTab) => {
     setActiveTab(tab)
     if (tab === 'feedback') {
       setSelectedPostId(null)
+      setPostBackTarget('home')
       setView('home')
     } else if (tab === 'changelog') {
       setSelectedChangelogId(null)
+      setPostBackTarget('home')
       setView('changelog')
+    } else if (tab === 'notifications') {
+      setPostBackTarget('home')
+      setView('notifications')
     } else {
       setSelectedHelpSlug(null)
+      setPostBackTarget('home')
       setView('help')
     }
   }, [])
@@ -320,7 +408,9 @@ function WidgetPage() {
   }, [])
 
   const shellOnBack =
-    view !== 'home' && view !== 'changelog' && view !== 'help' ? handleBack : undefined
+    view !== 'home' && view !== 'changelog' && view !== 'help' && view !== 'notifications'
+      ? handleBack
+      : undefined
 
   return (
     <WidgetShell
@@ -329,6 +419,7 @@ function WidgetPage() {
       onTabChange={handleTabChange}
       onBack={shellOnBack}
       enabledTabs={tabs}
+      notificationsUnreadCount={notificationsUnreadCount}
     >
       {view === 'changelog' && <WidgetChangelog onEntrySelect={handleChangelogEntrySelect} />}
 
@@ -340,6 +431,10 @@ function WidgetPage() {
 
       {view === 'help-detail' && selectedHelpSlug && (
         <WidgetHelpDetail articleSlug={selectedHelpSlug} />
+      )}
+
+      {view === 'notifications' && (
+        <WidgetNotifications onPostSelect={(postId) => handlePostSelect(postId, 'notifications')} />
       )}
 
       {/* Keep home mounted (hidden) when viewing post detail so form state is preserved */}
@@ -416,6 +511,7 @@ function WidgetPage() {
                   className="flex items-center gap-2 rounded-lg bg-muted/20 border border-border/50 px-2 py-2 cursor-pointer hover:bg-muted/30 transition-colors"
                   onClick={() => {
                     setSelectedPostId(successPost.id)
+                    setPostBackTarget('home')
                     setView('post-detail')
                   }}
                 >
