@@ -209,6 +209,13 @@ const updatePortalConfigSchema = z.object({
       anonymousPosting: z.boolean().optional(),
     })
     .optional(),
+  modules: z
+    .object({
+      feedback: z.boolean().optional(),
+      roadmap: z.boolean().optional(),
+      changelog: z.boolean().optional(),
+    })
+    .optional(),
 })
 
 const saveLogoKeySchema = z.object({

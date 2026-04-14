@@ -277,6 +277,8 @@ interface MetadataSidebarProps {
   hideSubscribe?: boolean
   /** Hide vote button (for admin context where voting is handled differently) */
   hideVote?: boolean
+  /** Hide roadmap section */
+  hideRoadmap?: boolean
   /** Visual variant: 'column' (default border-l) or 'card' (floating card) */
   variant?: 'column' | 'card'
   /** Additional post IDs whose voters should be merged (e.g. for merge preview) */
@@ -319,6 +321,7 @@ export function MetadataSidebar({
   isUpdating = false,
   hideSubscribe = false,
   hideVote = false,
+  hideRoadmap = false,
   variant = 'column',
   votersAdditionalPostIds,
   votersReadonly = false,
@@ -629,115 +632,119 @@ export function MetadataSidebar({
           )}
         </div>
 
-        {/* Roadmaps */}
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <MapIcon className="h-4 w-4" />
-            <span>
-              <FormattedMessage id="portal.postDetail.metadata.roadmap" defaultMessage="Roadmap" />
-            </span>
-          </div>
-          {canEdit && onRoadmapAdd && onRoadmapRemove ? (
-            <div className="flex flex-wrap justify-end gap-1 max-w-[60%]">
-              {roadmaps.map((roadmap) => {
-                const isPending = pendingRoadmapId === roadmap.id
-                return (
-                  <button
-                    key={roadmap.id}
-                    type="button"
-                    onClick={() => handleRemoveFromRoadmap(roadmap.id as RoadmapId)}
-                    disabled={isPending}
-                    className={cn(
-                      'group inline-flex items-center gap-1 ps-1.5 pe-1 py-0.5',
-                      'rounded-md text-[11px] font-medium',
-                      'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20',
-                      'hover:bg-blue-500/15 hover:border-blue-500/30',
-                      'transition-all duration-150',
-                      'disabled:opacity-50 disabled:cursor-not-allowed'
-                    )}
-                  >
-                    <MapIcon className="h-3 w-3 opacity-70" />
-                    <span className="truncate max-w-[100px]">{roadmap.name}</span>
-                    {isPending ? (
-                      <ArrowPathIcon className="h-2.5 w-2.5 animate-spin" />
-                    ) : (
-                      <XMarkIcon className="h-2.5 w-2.5 opacity-50 group-hover:opacity-100 transition-opacity" />
-                    )}
-                  </button>
-                )
-              })}
-              {availableRoadmaps.length > 0 && (
-                <Popover open={roadmapOpen} onOpenChange={setRoadmapOpen}>
-                  <PopoverTrigger asChild>
+        {!hideRoadmap && (
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <MapIcon className="h-4 w-4" />
+              <span>
+                <FormattedMessage
+                  id="portal.postDetail.metadata.roadmap"
+                  defaultMessage="Roadmap"
+                />
+              </span>
+            </div>
+            {canEdit && onRoadmapAdd && onRoadmapRemove ? (
+              <div className="flex flex-wrap justify-end gap-1 max-w-[60%]">
+                {roadmaps.map((roadmap) => {
+                  const isPending = pendingRoadmapId === roadmap.id
+                  return (
                     <button
+                      key={roadmap.id}
                       type="button"
-                      disabled={!!pendingRoadmapId}
+                      onClick={() => handleRemoveFromRoadmap(roadmap.id as RoadmapId)}
+                      disabled={isPending}
                       className={cn(
-                        'inline-flex items-center gap-0.5 px-1.5 py-0.5',
+                        'group inline-flex items-center gap-1 ps-1.5 pe-1 py-0.5',
                         'rounded-md text-[11px] font-medium',
-                        'text-muted-foreground/70 hover:text-muted-foreground',
-                        'border border-dashed border-border/60 hover:border-border',
-                        'hover:bg-muted/40',
+                        'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20',
+                        'hover:bg-blue-500/15 hover:border-blue-500/30',
                         'transition-all duration-150',
-                        'disabled:opacity-50'
+                        'disabled:opacity-50 disabled:cursor-not-allowed'
                       )}
                     >
-                      <PlusIcon className="h-2.5 w-2.5" />
-                      <FormattedMessage
-                        id="portal.postDetail.metadata.roadmapAdd"
-                        defaultMessage="Add"
-                      />
+                      <MapIcon className="h-3 w-3 opacity-70" />
+                      <span className="truncate max-w-[100px]">{roadmap.name}</span>
+                      {isPending ? (
+                        <ArrowPathIcon className="h-2.5 w-2.5 animate-spin" />
+                      ) : (
+                        <XMarkIcon className="h-2.5 w-2.5 opacity-50 group-hover:opacity-100 transition-opacity" />
+                      )}
                     </button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-48 p-1" align="end" sideOffset={4}>
-                    <div className="max-h-48 overflow-y-auto space-y-0.5">
-                      {availableRoadmaps.map((roadmap) => {
-                        const isPending = pendingRoadmapId === roadmap.id
-                        return (
-                          <button
-                            key={roadmap.id}
-                            type="button"
-                            onClick={() => handleAddToRoadmap(roadmap.id as RoadmapId)}
-                            disabled={isPending}
-                            className={cn(
-                              'w-full flex items-center gap-2 px-2.5 py-1.5 text-xs rounded-md',
-                              'text-foreground/80 hover:text-foreground hover:bg-muted/60',
-                              'transition-all duration-100 text-start font-medium',
-                              'disabled:opacity-50'
-                            )}
-                          >
-                            <MapIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                            <span className="truncate">{roadmap.name}</span>
-                            {isPending && (
-                              <ArrowPathIcon className="h-3 w-3 animate-spin ms-auto" />
-                            )}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              )}
-              {roadmaps.length === 0 && availableRoadmaps.length === 0 && !roadmapOpen && (
-                <span className="text-xs text-muted-foreground/60">-</span>
-              )}
-            </div>
-          ) : roadmaps.length > 0 ? (
-            <div className="flex flex-col items-end gap-1">
-              {roadmaps.map((roadmap) => (
-                <Link
-                  key={roadmap.id}
-                  to="/roadmap"
-                  className="text-sm font-medium text-foreground hover:text-primary transition-colors"
-                >
-                  {roadmap.name}
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <span className="text-xs text-muted-foreground/60">-</span>
-          )}
-        </div>
+                  )
+                })}
+                {availableRoadmaps.length > 0 && (
+                  <Popover open={roadmapOpen} onOpenChange={setRoadmapOpen}>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        disabled={!!pendingRoadmapId}
+                        className={cn(
+                          'inline-flex items-center gap-0.5 px-1.5 py-0.5',
+                          'rounded-md text-[11px] font-medium',
+                          'text-muted-foreground/70 hover:text-muted-foreground',
+                          'border border-dashed border-border/60 hover:border-border',
+                          'hover:bg-muted/40',
+                          'transition-all duration-150',
+                          'disabled:opacity-50'
+                        )}
+                      >
+                        <PlusIcon className="h-2.5 w-2.5" />
+                        <FormattedMessage
+                          id="portal.postDetail.metadata.roadmapAdd"
+                          defaultMessage="Add"
+                        />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-48 p-1" align="end" sideOffset={4}>
+                      <div className="max-h-48 overflow-y-auto space-y-0.5">
+                        {availableRoadmaps.map((roadmap) => {
+                          const isPending = pendingRoadmapId === roadmap.id
+                          return (
+                            <button
+                              key={roadmap.id}
+                              type="button"
+                              onClick={() => handleAddToRoadmap(roadmap.id as RoadmapId)}
+                              disabled={isPending}
+                              className={cn(
+                                'w-full flex items-center gap-2 px-2.5 py-1.5 text-xs rounded-md',
+                                'text-foreground/80 hover:text-foreground hover:bg-muted/60',
+                                'transition-all duration-100 text-start font-medium',
+                                'disabled:opacity-50'
+                              )}
+                            >
+                              <MapIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                              <span className="truncate">{roadmap.name}</span>
+                              {isPending && (
+                                <ArrowPathIcon className="h-3 w-3 animate-spin ms-auto" />
+                              )}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                )}
+                {roadmaps.length === 0 && availableRoadmaps.length === 0 && !roadmapOpen && (
+                  <span className="text-xs text-muted-foreground/60">-</span>
+                )}
+              </div>
+            ) : roadmaps.length > 0 ? (
+              <div className="flex flex-col items-end gap-1">
+                {roadmaps.map((roadmap) => (
+                  <Link
+                    key={roadmap.id}
+                    to="/roadmap"
+                    className="text-sm font-medium text-foreground hover:text-primary transition-colors"
+                  >
+                    {roadmap.name}
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <span className="text-xs text-muted-foreground/60">-</span>
+            )}
+          </div>
+        )}
 
         {/* Date */}
         <div className="flex items-center justify-between">

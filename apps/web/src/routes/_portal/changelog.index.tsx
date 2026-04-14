@@ -4,16 +4,45 @@ import { RssIcon } from '@heroicons/react/24/outline'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/shared/page-header'
 import { ChangelogListPublic } from '@/components/portal/changelog'
+import { PortalModuleUnavailable } from '@/components/public/portal-module-unavailable'
+import { areAllPortalModulesDisabled, resolvePortalModules } from '@/lib/shared/portal-modules'
 
 export const Route = createFileRoute('/_portal/changelog/')({
   loader: async ({ context }) => {
+    const modules = resolvePortalModules(context.settings?.publicPortalConfig?.modules)
+    const allModulesDisabled = areAllPortalModulesDisabled(modules)
+
     return {
       workspaceName: context.settings?.name ?? 'Quackback',
       baseUrl: context.baseUrl ?? '',
+      moduleUnavailable: !modules.changelog,
+      allModulesDisabled,
     }
   },
   head: ({ loaderData }) => {
     if (!loaderData) return {}
+    if (loaderData.moduleUnavailable) {
+      const { workspaceName, baseUrl } = loaderData
+      const title = loaderData.allModulesDisabled
+        ? `${workspaceName} - Sections unavailable`
+        : `Changelog unavailable - ${workspaceName}`
+      const description = loaderData.allModulesDisabled
+        ? 'Feedback, Roadmap, and Changelog are currently unavailable for this workspace.'
+        : 'The changelog section is currently unavailable for this workspace.'
+      const canonicalUrl = baseUrl ? `${baseUrl}/changelog` : ''
+      return {
+        meta: [
+          { title },
+          { name: 'description', content: description },
+          { property: 'og:title', content: title },
+          { property: 'og:description', content: description },
+          ...(canonicalUrl ? [{ property: 'og:url', content: canonicalUrl }] : []),
+          { name: 'twitter:title', content: title },
+          { name: 'twitter:description', content: description },
+        ],
+        links: canonicalUrl ? [{ rel: 'canonical', href: canonicalUrl }] : [],
+      }
+    }
     const { workspaceName, baseUrl } = loaderData
     const title = `Changelog - ${workspaceName}`
     const description = `Stay up to date with the latest ${workspaceName} product updates and shipped features.`
@@ -35,6 +64,18 @@ export const Route = createFileRoute('/_portal/changelog/')({
 })
 
 function ChangelogPage() {
+  const { moduleUnavailable, allModulesDisabled } = Route.useLoaderData()
+
+  if (moduleUnavailable) {
+    return (
+      <PortalModuleUnavailable moduleName="Changelog" allModulesDisabled={allModulesDisabled} />
+    )
+  }
+
+  return <ChangelogContent />
+}
+
+function ChangelogContent() {
   const intl = useIntl()
 
   return (

@@ -37,6 +37,7 @@ const navSections: NavSection[] = [
     items: [
       { label: 'Team Members', to: '/admin/settings/team', icon: UsersIcon },
       { label: 'Integrations', to: '/admin/settings/integrations', icon: PuzzlePieceIcon },
+      { label: 'Module Visibility', to: '/admin/settings/workspace', icon: Squares2X2Icon },
     ],
   },
   {

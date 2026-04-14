@@ -9,6 +9,7 @@ import { FeedbackContainer } from '@/components/public/feedback/feedback-contain
 import { portalQueries } from '@/lib/client/queries/portal'
 import { votedPostsKeys } from '@/lib/client/hooks/use-portal-posts-query'
 import { DEFAULT_PORTAL_CONFIG } from '@/lib/server/domains/settings'
+import { resolvePortalModules } from '@/lib/shared/portal-modules'
 
 const searchSchema = z.object({
   board: z.string().optional(),
@@ -31,6 +32,16 @@ export const Route = createFileRoute('/_portal/')({
       throw redirect({ to: '/onboarding' })
     }
 
+    const modules = resolvePortalModules(org.publicPortalConfig?.modules)
+
+    if (!modules.feedback) {
+      throw redirect({ to: '/changelog' })
+    }
+
+    const anonymousVotingEnabled =
+      org.publicPortalConfig?.features?.anonymousVoting ??
+      DEFAULT_PORTAL_CONFIG.features.anonymousVoting
+
     // Parse search params for initial SSR (not using loaderDeps to avoid re-execution)
     const searchParams = location.search as z.infer<typeof searchSchema>
 
@@ -51,10 +62,6 @@ export const Route = createFileRoute('/_portal/')({
     // Seed the votedPosts cache so usePostVote has data during SSR rendering.
     // This ensures vote highlights appear in the server-rendered HTML.
     queryClient.setQueryData(votedPostsKeys.byWorkspace(), new Set(portalData.votedPostIds))
-
-    const anonymousVotingEnabled =
-      org.publicPortalConfig?.features?.anonymousVoting ??
-      DEFAULT_PORTAL_CONFIG.features.anonymousVoting
 
     return {
       org,

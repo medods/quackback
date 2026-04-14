@@ -87,6 +87,24 @@ export interface PortalFeatures {
 }
 
 /**
+ * Public portal module visibility toggles
+ */
+export interface PortalModules {
+  /** Show Feedback module */
+  feedback: boolean
+  /** Show Roadmap module */
+  roadmap: boolean
+  /** Show Changelog module */
+  changelog: boolean
+}
+
+export const DEFAULT_PORTAL_MODULES: PortalModules = {
+  feedback: true,
+  roadmap: true,
+  changelog: true,
+}
+
+/**
  * Portal configuration
  * Controls the public feedback portal behavior
  */
@@ -95,6 +113,8 @@ export interface PortalConfig {
   oauth: PortalAuthMethods
   /** Feature toggles */
   features: PortalFeatures
+  /** Module visibility toggles */
+  modules: PortalModules
 }
 
 /**
@@ -119,6 +139,7 @@ export const DEFAULT_PORTAL_CONFIG: PortalConfig = {
     anonymousCommenting: false,
     anonymousPosting: false,
   },
+  modules: DEFAULT_PORTAL_MODULES,
 }
 
 // =============================================================================
@@ -304,6 +325,7 @@ export interface UpdateAuthConfigInput {
 export interface UpdatePortalConfigInput {
   oauth?: Partial<PortalAuthMethods>
   features?: Partial<PortalFeatures>
+  modules?: Partial<PortalModules>
 }
 
 // =============================================================================
@@ -326,6 +348,7 @@ export interface PublicAuthConfig {
 export interface PublicPortalConfig {
   oauth: PortalAuthMethods
   features: PortalFeatures
+  modules: PortalModules
   /** Display name overrides for generic OAuth providers (e.g. custom-oidc → "Okta") */
   customProviderNames?: Record<string, string>
 }

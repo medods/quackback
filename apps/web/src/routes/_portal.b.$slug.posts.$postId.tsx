@@ -32,6 +32,7 @@ import { PortalMergeBanner } from '@/components/public/post-detail/merge-banner'
 import { similarPostsQuery } from '@/components/public/post-detail/similar-posts-section'
 import { isValidTypeId, type CommentId, type PostId } from '@quackback/ids'
 import type { TiptapContent } from '@/lib/shared/schemas/posts'
+import { resolvePortalModules } from '@/lib/shared/portal-modules'
 
 export const Route = createFileRoute('/_portal/b/$slug/posts/$postId')({
   loader: async ({ params, context }) => {
@@ -41,6 +42,7 @@ export const Route = createFileRoute('/_portal/b/$slug/posts/$postId')({
     if (!settings) {
       throw notFound()
     }
+    const modules = resolvePortalModules(settings.publicPortalConfig?.modules)
 
     if (!isValidTypeId(postIdParam, 'post')) {
       throw notFound()
@@ -49,7 +51,9 @@ export const Route = createFileRoute('/_portal/b/$slug/posts/$postId')({
 
     // Fire non-critical prefetches (don't await - components handle their own loading via Suspense)
     queryClient.prefetchQuery(portalDetailQueries.voteSidebarData(postId))
-    queryClient.prefetchQuery(portalDetailQueries.commentsSectionData(postId))
+    if (modules.feedback) {
+      queryClient.prefetchQuery(portalDetailQueries.commentsSectionData(postId))
+    }
     queryClient.prefetchQuery({
       queryKey: postPermissionsKeys.detail(postId),
       queryFn: () => getPostPermissionsFn({ data: { postId } }),
@@ -105,6 +109,9 @@ export const Route = createFileRoute('/_portal/b/$slug/posts/$postId')({
 function PostDetailPage() {
   const { postId, slug } = Route.useLoaderData()
   const { session, settings } = useRouteContext({ from: '__root__' })
+  const modules = resolvePortalModules(settings?.publicPortalConfig?.modules)
+  const feedbackModuleEnabled = modules.feedback
+  const roadmapModuleEnabled = modules.roadmap
 
   const intl = useIntl()
   const [isEditingPost, setIsEditingPost] = useState(false)
@@ -178,6 +185,8 @@ function PostDetailPage() {
 
   // Scroll to comment anchor after content loads
   useEffect(() => {
+    if (!feedbackModuleEnabled) return
+
     const hash = window.location.hash
     if (!hash || !hash.startsWith('#comment-')) {
       return
@@ -193,7 +202,7 @@ function PostDetailPage() {
     }, 100)
 
     return () => clearTimeout(timeoutId)
-  }, [post.comments])
+  }, [feedbackModuleEnabled, post.comments])
 
   return (
     <div className="py-6">
@@ -247,43 +256,45 @@ function PostDetailPage() {
               createdAt={new Date(post.createdAt)}
               tags={post.tags}
               roadmaps={post.roadmaps}
+              hideRoadmap={!roadmapModuleEnabled}
             />
           </Suspense>
         </div>
       </div>
 
-      {/* Comments card */}
-      <div className="bg-card border border-border/40 rounded-lg overflow-hidden mt-4">
-        <Suspense fallback={<CommentsSectionSkeleton />}>
-          <CommentsSection
-            postId={postId}
-            comments={post.comments}
-            pinnedCommentId={post.pinnedCommentId}
-            disableCommenting={!!post.mergeInfo || !!post.isCommentsLocked}
-            lockedMessage={
-              post.isCommentsLocked
-                ? intl.formatMessage({
-                    id: 'portal.postDetail.commentsLocked',
-                    defaultMessage: 'Comments are locked on this post',
-                  })
-                : undefined
-            }
-            statuses={statusesQuery.data}
-            currentStatusId={post.statusId}
-            onPinComment={(commentId: CommentId) => pinComment.mutate(commentId)}
-            onUnpinComment={() => unpinComment.mutate()}
-            isPinPending={pinComment.isPending || unpinComment.isPending}
-            onDeleteComment={(commentId: CommentId) => deleteComment.mutate(commentId)}
-            deletingCommentId={
-              deleteComment.isPending ? (deleteComment.variables as CommentId) : null
-            }
-            onRestoreComment={(commentId: CommentId) => restoreComment.mutate(commentId)}
-            restoringCommentId={
-              restoreComment.isPending ? (restoreComment.variables as CommentId) : null
-            }
-          />
-        </Suspense>
-      </div>
+      {feedbackModuleEnabled && (
+        <div className="bg-card border border-border/40 rounded-lg overflow-hidden mt-4">
+          <Suspense fallback={<CommentsSectionSkeleton />}>
+            <CommentsSection
+              postId={postId}
+              comments={post.comments}
+              pinnedCommentId={post.pinnedCommentId}
+              disableCommenting={!!post.mergeInfo || !!post.isCommentsLocked}
+              lockedMessage={
+                post.isCommentsLocked
+                  ? intl.formatMessage({
+                      id: 'portal.postDetail.commentsLocked',
+                      defaultMessage: 'Comments are locked on this post',
+                    })
+                  : undefined
+              }
+              statuses={statusesQuery.data}
+              currentStatusId={post.statusId}
+              onPinComment={(commentId: CommentId) => pinComment.mutate(commentId)}
+              onUnpinComment={() => unpinComment.mutate()}
+              isPinPending={pinComment.isPending || unpinComment.isPending}
+              onDeleteComment={(commentId: CommentId) => deleteComment.mutate(commentId)}
+              deletingCommentId={
+                deleteComment.isPending ? (deleteComment.variables as CommentId) : null
+              }
+              onRestoreComment={(commentId: CommentId) => restoreComment.mutate(commentId)}
+              restoringCommentId={
+                restoreComment.isPending ? (restoreComment.variables as CommentId) : null
+              }
+            />
+          </Suspense>
+        </div>
+      )}
 
       <DeletePostDialog
         open={deleteDialogOpen}

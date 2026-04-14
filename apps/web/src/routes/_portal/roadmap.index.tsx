@@ -3,7 +3,9 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { FormattedMessage } from 'react-intl'
 import { z } from 'zod'
 import { RoadmapBoard } from '@/components/public/roadmap-board'
+import { PortalModuleUnavailable } from '@/components/public/portal-module-unavailable'
 import { portalQueries } from '@/lib/client/queries/portal'
+import { areAllPortalModulesDisabled, resolvePortalModules } from '@/lib/shared/portal-modules'
 
 const searchSchema = z.object({
   roadmap: z.string().optional(),
@@ -18,6 +20,19 @@ export const Route = createFileRoute('/_portal/roadmap/')({
   validateSearch: searchSchema,
   loader: async ({ context }) => {
     const { queryClient, settings, baseUrl, userRole } = context
+    const modules = resolvePortalModules(settings?.publicPortalConfig?.modules)
+    const allModulesDisabled = areAllPortalModulesDisabled(modules)
+
+    if (!modules.roadmap) {
+      return {
+        firstRoadmapId: null,
+        workspaceName: settings?.name ?? 'Quackback',
+        baseUrl: baseUrl ?? '',
+        userRole: userRole ?? null,
+        moduleUnavailable: true,
+        allModulesDisabled,
+      }
+    }
 
     const [roadmaps] = await Promise.all([
       queryClient.ensureQueryData(portalQueries.roadmaps()),
@@ -31,10 +46,34 @@ export const Route = createFileRoute('/_portal/roadmap/')({
       workspaceName: settings?.name ?? 'Quackback',
       baseUrl: baseUrl ?? '',
       userRole: userRole ?? null,
+      moduleUnavailable: false,
+      allModulesDisabled,
     }
   },
   head: ({ loaderData }) => {
     if (!loaderData) return {}
+    if (loaderData.moduleUnavailable) {
+      const { workspaceName, baseUrl } = loaderData
+      const title = loaderData.allModulesDisabled
+        ? `${workspaceName} - Sections unavailable`
+        : `Roadmap unavailable - ${workspaceName}`
+      const description = loaderData.allModulesDisabled
+        ? 'Feedback, Roadmap, and Changelog are currently unavailable for this workspace.'
+        : 'The roadmap section is currently unavailable for this workspace.'
+      const canonicalUrl = baseUrl ? `${baseUrl}/roadmap` : ''
+      return {
+        meta: [
+          { title },
+          { name: 'description', content: description },
+          { property: 'og:title', content: title },
+          { property: 'og:description', content: description },
+          ...(canonicalUrl ? [{ property: 'og:url', content: canonicalUrl }] : []),
+          { name: 'twitter:title', content: title },
+          { name: 'twitter:description', content: description },
+        ],
+        links: canonicalUrl ? [{ rel: 'canonical', href: canonicalUrl }] : [],
+      }
+    }
     const { workspaceName, baseUrl } = loaderData
     const title = `Roadmap - ${workspaceName}`
     const description = `See what ${workspaceName} is working on and what's coming next.`
@@ -56,6 +95,16 @@ export const Route = createFileRoute('/_portal/roadmap/')({
 })
 
 function RoadmapPage() {
+  const { moduleUnavailable, allModulesDisabled } = Route.useLoaderData()
+
+  if (moduleUnavailable) {
+    return <PortalModuleUnavailable moduleName="Roadmap" allModulesDisabled={allModulesDisabled} />
+  }
+
+  return <RoadmapContent />
+}
+
+function RoadmapContent() {
   const { firstRoadmapId, userRole } = Route.useLoaderData()
   const { roadmap: selectedRoadmapFromUrl } = Route.useSearch()
 

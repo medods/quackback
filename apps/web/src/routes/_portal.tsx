@@ -8,6 +8,7 @@ import { DEFAULT_PORTAL_CONFIG } from '@/lib/server/domains/settings'
 import { generateThemeCSS, getGoogleFontsUrl } from '@/lib/shared/theme'
 import { resolveLocale } from '@/lib/shared/i18n'
 import { PortalIntlProvider } from '@/components/portal-intl-provider'
+import { resolvePortalModules } from '@/lib/shared/portal-modules'
 
 /** Resolve locale from Accept-Language header on the server. */
 const getPortalLocale = createServerFn({ method: 'GET' }).handler(async () => {
@@ -37,6 +38,7 @@ export const Route = createFileRoute('/_portal')({
     const brandingConfig = settings?.brandingConfig ?? {}
     const customCss = settings?.customCss ?? ''
     const portalConfig = settings?.publicPortalConfig ?? null
+    const moduleVisibility = resolvePortalModules(portalConfig?.modules)
 
     const themeMode = brandingConfig.themeMode ?? 'user'
 
@@ -79,6 +81,7 @@ export const Route = createFileRoute('/_portal')({
       googleFontsUrl,
       initialUserData,
       authConfig,
+      moduleVisibility,
       locale,
     }
   },
@@ -120,6 +123,7 @@ function PortalLayout() {
     googleFontsUrl,
     initialUserData,
     authConfig,
+    moduleVisibility,
     locale,
   } = Route.useLoaderData()
 
@@ -141,6 +145,7 @@ function PortalLayout() {
             userRole={userRole}
             initialUserData={initialUserData}
             showThemeToggle={themeMode === 'user'}
+            moduleVisibility={moduleVisibility}
           />
           <main className="mx-auto max-w-6xl w-full flex-1 px-4 sm:px-6">
             <Outlet />

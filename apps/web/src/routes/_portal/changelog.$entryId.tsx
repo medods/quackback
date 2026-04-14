@@ -5,11 +5,26 @@ import { publicChangelogQueries } from '@/lib/client/queries/changelog'
 import { ChangelogEntryDetail } from '@/components/portal/changelog'
 import { BackLink } from '@/components/ui/back-link'
 import type { ChangelogId } from '@quackback/ids'
+import { PortalModuleUnavailable } from '@/components/public/portal-module-unavailable'
+import { areAllPortalModulesDisabled, resolvePortalModules } from '@/lib/shared/portal-modules'
 
 export const Route = createFileRoute('/_portal/changelog/$entryId')({
   loader: async ({ context, params }) => {
     const { queryClient } = context
     const entryId = params.entryId as ChangelogId
+    const modules = resolvePortalModules(context.settings?.publicPortalConfig?.modules)
+    const allModulesDisabled = areAllPortalModulesDisabled(modules)
+
+    if (!modules.changelog) {
+      return {
+        entryId,
+        entryTitle: 'Changelog',
+        workspaceName: context.settings?.name ?? 'Quackback',
+        baseUrl: context.baseUrl ?? '',
+        moduleUnavailable: true,
+        allModulesDisabled,
+      }
+    }
 
     let entry
     try {
@@ -24,10 +39,26 @@ export const Route = createFileRoute('/_portal/changelog/$entryId')({
       entryTitle: entry.title,
       workspaceName: context.settings?.name ?? 'Quackback',
       baseUrl: context.baseUrl ?? '',
+      moduleUnavailable: false,
+      allModulesDisabled,
     }
   },
   head: ({ loaderData }) => {
     if (!loaderData) return {}
+    if (loaderData.moduleUnavailable) {
+      const title = `${loaderData.workspaceName} - Changelog unavailable`
+      const description = 'The changelog section is currently unavailable for this workspace.'
+      return {
+        meta: [
+          { title },
+          { name: 'description', content: description },
+          { property: 'og:title', content: title },
+          { property: 'og:description', content: description },
+          { name: 'twitter:title', content: title },
+          { name: 'twitter:description', content: description },
+        ],
+      }
+    }
     const { entryTitle, entryId, workspaceName, baseUrl } = loaderData
     const title = `${entryTitle} - ${workspaceName} Changelog`
     const description = `${entryTitle}. A product update from ${workspaceName}.`
@@ -50,6 +81,18 @@ export const Route = createFileRoute('/_portal/changelog/$entryId')({
 })
 
 function ChangelogEntryPage() {
+  const { moduleUnavailable, allModulesDisabled } = Route.useLoaderData()
+
+  if (moduleUnavailable) {
+    return (
+      <PortalModuleUnavailable moduleName="Changelog" allModulesDisabled={allModulesDisabled} />
+    )
+  }
+
+  return <ChangelogEntryContent />
+}
+
+function ChangelogEntryContent() {
   const { entryId } = Route.useLoaderData()
   const { data: entry } = useSuspenseQuery(publicChangelogQueries.detail(entryId))
 

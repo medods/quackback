@@ -15,6 +15,7 @@ export type {
   AuthConfig,
   PortalAuthMethods,
   PortalFeatures,
+  PortalModules,
   PortalConfig,
   HeaderDisplayMode,
   ThemeColors,
@@ -33,6 +34,7 @@ export type {
 // Default config values (no DB dependency)
 export {
   DEFAULT_AUTH_CONFIG,
+  DEFAULT_PORTAL_MODULES,
   DEFAULT_PORTAL_CONFIG,
   DEFAULT_DEVELOPER_CONFIG,
   DEFAULT_WIDGET_CONFIG,

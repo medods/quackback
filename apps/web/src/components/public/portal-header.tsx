@@ -28,6 +28,7 @@ import { useAuthPopoverSafe } from '@/components/auth/auth-popover-context'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuthBroadcast } from '@/lib/client/hooks/use-auth-broadcast'
 import { NotificationBell } from '@/components/notifications'
+import { DEFAULT_PORTAL_MODULES, type PortalModules } from '@/lib/server/domains/settings'
 
 interface PortalHeaderProps {
   orgName: string
@@ -42,12 +43,29 @@ interface PortalHeaderProps {
   }
   /** Whether to show the theme toggle (hidden when admin forces a specific theme) */
   showThemeToggle?: boolean
+  /** Which portal modules are visible in navigation */
+  moduleVisibility?: PortalModules
 }
 
 const NAV_ITEMS = [
-  { to: '/', messageId: 'portal.header.nav.feedback', defaultMessage: 'Feedback' },
-  { to: '/roadmap', messageId: 'portal.header.nav.roadmap', defaultMessage: 'Roadmap' },
-  { to: '/changelog', messageId: 'portal.header.nav.changelog', defaultMessage: 'Changelog' },
+  {
+    key: 'feedback' as const,
+    to: '/',
+    messageId: 'portal.header.nav.feedback',
+    defaultMessage: 'Feedback',
+  },
+  {
+    key: 'roadmap' as const,
+    to: '/roadmap',
+    messageId: 'portal.header.nav.roadmap',
+    defaultMessage: 'Roadmap',
+  },
+  {
+    key: 'changelog' as const,
+    to: '/changelog',
+    messageId: 'portal.header.nav.changelog',
+    defaultMessage: 'Changelog',
+  },
 ] as const
 
 export function PortalHeader({
@@ -56,6 +74,7 @@ export function PortalHeader({
   userRole,
   initialUserData,
   showThemeToggle = true,
+  moduleVisibility = DEFAULT_PORTAL_MODULES,
 }: PortalHeaderProps) {
   const intl = useIntl()
   const router = useRouter()
@@ -94,6 +113,7 @@ export function PortalHeader({
 
   // Team members (admin, member) can access admin dashboard
   const canAccessAdmin = isLoggedIn && isTeamMember(userRole)
+  const visibleNavItems = NAV_ITEMS.filter((item) => moduleVisibility[item.key])
 
   const handleSignOut = async () => {
     await signOut()
@@ -107,7 +127,7 @@ export function PortalHeader({
   // Navigation component
   const Navigation = () => (
     <nav className="portal-nav flex items-center gap-1">
-      {NAV_ITEMS.map((item) => {
+      {visibleNavItems.map((item) => {
         const isActive =
           item.to === '/'
             ? pathname === '/' || /^\/[^/]+\/posts\//.test(pathname)
@@ -280,13 +300,15 @@ export function PortalHeader({
       </div>
 
       {/* Row 2: Navigation */}
-      <div className="mt-2">
-        <div className="max-w-6xl mx-auto w-full px-4 sm:px-6">
-          <div className="flex items-center">
-            <Navigation />
+      {visibleNavItems.length > 0 && (
+        <div className="mt-2">
+          <div className="max-w-6xl mx-auto w-full px-4 sm:px-6">
+            <div className="flex items-center">
+              <Navigation />
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

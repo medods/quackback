@@ -221,6 +221,7 @@ export async function getPublicPortalConfig(): Promise<PublicPortalConfig> {
     return {
       oauth: filteredOAuth,
       features: portalConfig.features,
+      modules: portalConfig.modules,
       ...(customProviderNames && { customProviderNames }),
     }
   } catch (error) {
@@ -298,6 +299,7 @@ export async function getTenantSettings(): Promise<TenantSettings | null> {
       publicPortalConfig: {
         oauth: filteredPortalOAuth,
         features: portalConfig.features,
+        modules: portalConfig.modules,
         ...(portalCustomNames && { customProviderNames: portalCustomNames }),
       },
       publicWidgetConfig: {
