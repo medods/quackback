@@ -57,6 +57,7 @@ export const Route = createFileRoute('/widget/')({
         id: s.id as string,
         name: s.name,
         color: s.color,
+        category: s.category,
       })),
       boards: portalData.boards
         .filter((b) => b.isPublic)
@@ -384,10 +385,9 @@ function WidgetPage() {
         successPost &&
         (() => {
           const successStatus = successPost.statusId
-            ? (statuses.find(
-                (s: { id: string; name: string; color: string }) => s.id === successPost.statusId
-              ) ?? null)
+            ? (statuses.find((s) => s.id === successPost.statusId) ?? null)
             : null
+          const isSuccessClosed = successStatus?.category === 'closed'
 
           return (
             <div className="flex flex-col h-full">
@@ -423,7 +423,8 @@ function WidgetPage() {
                     <WidgetVoteButton
                       postId={successPost.id as PostId}
                       voteCount={successPost.voteCount}
-                      onBeforeVote={canVote ? ensureSession : undefined}
+                      disabled={isSuccessClosed}
+                      onBeforeVote={!isSuccessClosed && canVote ? ensureSession : undefined}
                     />
                   </div>
                   <div className="flex-1 min-w-0">

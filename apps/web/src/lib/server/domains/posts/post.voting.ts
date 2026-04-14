@@ -10,6 +10,7 @@ import {
   votes,
   postSubscriptions,
   boards,
+  postStatuses,
   principal,
   user,
   sql,
@@ -19,7 +20,7 @@ import {
 } from '@/lib/server/db'
 import { createId, toUuid, type PostId, type PrincipalId } from '@quackback/ids'
 import { getExecuteRows } from '@/lib/server/utils'
-import { NotFoundError } from '@/lib/shared/errors'
+import { NotFoundError, ValidationError } from '@/lib/shared/errors'
 import type { VoteResult } from './post.types'
 import {
   levelFromFlags,
@@ -63,16 +64,23 @@ export async function voteOnPost(postId: PostId, principalId: PrincipalId): Prom
   const result = await db.execute<{
     post_exists: boolean
     board_exists: boolean
+    vote_allowed: boolean
     newly_voted: boolean
     vote_count: number
   }>(sql`
     WITH post_check AS (
-      SELECT id, board_id, vote_count FROM ${posts}
-      WHERE id = ${postUuid}::uuid AND deleted_at IS NULL
+      SELECT p.id, p.board_id, p.vote_count, COALESCE(ps.category, 'active') AS status_category
+      FROM ${posts} p
+      LEFT JOIN ${postStatuses} ps ON ps.id = p.status_id
+      WHERE p.id = ${postUuid}::uuid AND p.deleted_at IS NULL
     ),
     board_check AS (
       SELECT 1 FROM ${boards}
       WHERE id = (SELECT board_id FROM post_check)
+    ),
+    vote_allowed AS (
+      SELECT 1 FROM post_check
+      WHERE status_category <> 'closed'
     ),
     existing AS (
       SELECT id FROM ${votes}
@@ -81,6 +89,7 @@ export async function voteOnPost(postId: PostId, principalId: PrincipalId): Prom
     deleted AS (
       DELETE FROM ${votes}
       WHERE id IN (SELECT id FROM existing)
+        AND EXISTS (SELECT 1 FROM vote_allowed)
       RETURNING id
     ),
     inserted AS (
@@ -89,6 +98,7 @@ export async function voteOnPost(postId: PostId, principalId: PrincipalId): Prom
       WHERE NOT EXISTS (SELECT 1 FROM existing)
         AND EXISTS (SELECT 1 FROM post_check)
         AND EXISTS (SELECT 1 FROM board_check)
+        AND EXISTS (SELECT 1 FROM vote_allowed)
       ON CONFLICT (post_id, principal_id) DO NOTHING
       RETURNING id
     ),
@@ -119,6 +129,7 @@ export async function voteOnPost(postId: PostId, principalId: PrincipalId): Prom
     SELECT
       EXISTS(SELECT 1 FROM post_check) as post_exists,
       EXISTS(SELECT 1 FROM board_check) as board_exists,
+      EXISTS(SELECT 1 FROM vote_allowed) as vote_allowed,
       EXISTS(SELECT 1 FROM inserted) as newly_voted,
       COALESCE((SELECT vote_count FROM updated_post), (SELECT vote_count FROM post_check), 0) as vote_count
   `)
@@ -126,6 +137,7 @@ export async function voteOnPost(postId: PostId, principalId: PrincipalId): Prom
   type VoteResultRow = {
     post_exists: boolean
     board_exists: boolean
+    vote_allowed: boolean
     newly_voted: boolean
     vote_count: number
   }
@@ -138,6 +150,10 @@ export async function voteOnPost(postId: PostId, principalId: PrincipalId): Prom
 
   if (!row?.board_exists) {
     throw new NotFoundError('BOARD_NOT_FOUND', `Board not found for post ${postId}`)
+  }
+
+  if (!row?.vote_allowed) {
+    throw new ValidationError('VALIDATION_ERROR', 'Cannot vote on posts with closed status')
   }
 
   // newly_voted = true means we inserted a vote (user now has vote)
@@ -183,22 +199,30 @@ export async function addVoteOnBehalf(
   const result = await db.execute<{
     post_exists: boolean
     board_exists: boolean
+    vote_allowed: boolean
     newly_voted: boolean
     vote_count: number
   }>(sql`
     WITH post_check AS (
-      SELECT id, board_id, vote_count FROM ${posts}
-      WHERE id = ${postUuid}::uuid AND deleted_at IS NULL
+      SELECT p.id, p.board_id, p.vote_count, COALESCE(ps.category, 'active') AS status_category
+      FROM ${posts} p
+      LEFT JOIN ${postStatuses} ps ON ps.id = p.status_id
+      WHERE p.id = ${postUuid}::uuid AND p.deleted_at IS NULL
     ),
     board_check AS (
       SELECT 1 FROM ${boards}
       WHERE id = (SELECT board_id FROM post_check)
+    ),
+    vote_allowed AS (
+      SELECT 1 FROM post_check
+      WHERE status_category <> 'closed'
     ),
     inserted AS (
       INSERT INTO ${votes} (id, post_id, principal_id, source_type, source_external_url, feedback_suggestion_id, added_by_principal_id, created_at, updated_at)
       SELECT ${voteId}::uuid, ${postUuid}::uuid, ${principalUuid}::uuid, ${sourceType}, ${sourceExternalUrl}, ${suggestionUuid}::uuid, ${addedByUuid}::uuid, ${createdAtSql}, ${createdAtSql}
       WHERE EXISTS (SELECT 1 FROM post_check)
         AND EXISTS (SELECT 1 FROM board_check)
+        AND EXISTS (SELECT 1 FROM vote_allowed)
       ON CONFLICT (post_id, principal_id) DO NOTHING
       RETURNING id
     ),
@@ -219,6 +243,7 @@ export async function addVoteOnBehalf(
     SELECT
       EXISTS(SELECT 1 FROM post_check) as post_exists,
       EXISTS(SELECT 1 FROM board_check) as board_exists,
+      EXISTS(SELECT 1 FROM vote_allowed) as vote_allowed,
       EXISTS(SELECT 1 FROM inserted) as newly_voted,
       COALESCE((SELECT vote_count FROM updated_post), (SELECT vote_count FROM post_check), 0) as vote_count
   `)
@@ -226,6 +251,7 @@ export async function addVoteOnBehalf(
   type VoteResultRow = {
     post_exists: boolean
     board_exists: boolean
+    vote_allowed: boolean
     newly_voted: boolean
     vote_count: number
   }
@@ -238,6 +264,10 @@ export async function addVoteOnBehalf(
 
   if (!row?.board_exists) {
     throw new NotFoundError('BOARD_NOT_FOUND', `Board not found for post ${postId}`)
+  }
+
+  if (!row?.vote_allowed) {
+    throw new ValidationError('VALIDATION_ERROR', 'Cannot vote on posts with closed status')
   }
 
   return { voted: row.newly_voted, voteCount: row.vote_count ?? 0 }

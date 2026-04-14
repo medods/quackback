@@ -36,6 +36,7 @@ interface StatusInfo {
   id: string
   name: string
   color: string
+  category: 'active' | 'complete' | 'closed'
 }
 
 interface BoardInfo {
@@ -102,6 +103,7 @@ const WidgetPostRow = memo(
     onSelect?: () => void
   }) {
     const status = post.statusId ? (statusMap.get(post.statusId) ?? null) : null
+    const isClosed = status?.category === 'closed'
     return (
       <div
         className={`w-full overflow-hidden flex items-center gap-2 rounded-lg hover:bg-muted/30 transition-colors cursor-pointer ${compact ? 'px-1.5 py-1' : 'px-2 py-1.5'}`}
@@ -112,8 +114,9 @@ const WidgetPostRow = memo(
             postId={post.id as PostId}
             voteCount={post.voteCount}
             compact={compact}
+            disabled={isClosed}
             onBeforeVote={
-              canVote
+              !isClosed && canVote
                 ? async () => {
                     let success = false
                     await ensureSessionThen(() => {
@@ -123,7 +126,7 @@ const WidgetPostRow = memo(
                   }
                 : undefined
             }
-            onAuthRequired={!canVote ? onAuthRequired : undefined}
+            onAuthRequired={!isClosed && !canVote ? onAuthRequired : undefined}
           />
         </div>
         <div className="flex-1 min-w-0">

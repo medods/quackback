@@ -26,6 +26,7 @@ vi.mock('@/lib/server/db', async () => {
     },
     postSubscriptions: { id: 'id', postId: 'post_id', principalId: 'principal_id' },
     boards: { id: 'board_id' },
+    postStatuses: { id: 'status_id', category: 'category' },
     principal: { id: 'principal_id' },
     user: { id: 'user_id' },
     sql: realSql,
@@ -49,11 +50,50 @@ vi.mock('@quackback/ids', async (importOriginal) => {
 })
 
 // Import after mocks
-const { removeVote, addVoteOnBehalf } = await import('../post.voting')
+const { voteOnPost, removeVote, addVoteOnBehalf } = await import('../post.voting')
 
 const POST_ID = 'post_01test' as PostId
 const PRINCIPAL_ID = 'principal_01voter' as PrincipalId
 const ADMIN_ID = 'principal_01admin' as PrincipalId
+
+describe('voteOnPost', () => {
+  beforeEach(() => {
+    mockDbExecute.mockReset()
+  })
+
+  it('toggles vote successfully', async () => {
+    mockDbExecute.mockResolvedValue([
+      {
+        post_exists: true,
+        board_exists: true,
+        vote_allowed: true,
+        newly_voted: true,
+        vote_count: 6,
+      },
+    ])
+
+    const result = await voteOnPost(POST_ID, PRINCIPAL_ID)
+
+    expect(result).toEqual({ voted: true, voteCount: 6 })
+    expect(mockDbExecute).toHaveBeenCalledTimes(1)
+  })
+
+  it('blocks voting when post status category is closed', async () => {
+    mockDbExecute.mockResolvedValue([
+      {
+        post_exists: true,
+        board_exists: true,
+        vote_allowed: false,
+        newly_voted: false,
+        vote_count: 5,
+      },
+    ])
+
+    await expect(voteOnPost(POST_ID, PRINCIPAL_ID)).rejects.toThrow(
+      'Cannot vote on posts with closed status'
+    )
+  })
+})
 
 describe('removeVote', () => {
   beforeEach(() => {
@@ -102,7 +142,13 @@ describe('addVoteOnBehalf', () => {
 
   it('adds a proxy vote successfully', async () => {
     mockDbExecute.mockResolvedValue([
-      { post_exists: true, board_exists: true, newly_voted: true, vote_count: 6 },
+      {
+        post_exists: true,
+        board_exists: true,
+        vote_allowed: true,
+        newly_voted: true,
+        vote_count: 6,
+      },
     ])
 
     const result = await addVoteOnBehalf(
@@ -119,7 +165,13 @@ describe('addVoteOnBehalf', () => {
 
   it('returns voted: false when vote already exists (idempotent)', async () => {
     mockDbExecute.mockResolvedValue([
-      { post_exists: true, board_exists: true, newly_voted: false, vote_count: 5 },
+      {
+        post_exists: true,
+        board_exists: true,
+        vote_allowed: true,
+        newly_voted: false,
+        vote_count: 5,
+      },
     ])
 
     const result = await addVoteOnBehalf(POST_ID, PRINCIPAL_ID)
@@ -130,7 +182,13 @@ describe('addVoteOnBehalf', () => {
 
   it('throws POST_NOT_FOUND when post does not exist', async () => {
     mockDbExecute.mockResolvedValue([
-      { post_exists: false, board_exists: false, newly_voted: false, vote_count: 0 },
+      {
+        post_exists: false,
+        board_exists: false,
+        vote_allowed: false,
+        newly_voted: false,
+        vote_count: 0,
+      },
     ])
 
     await expect(addVoteOnBehalf(POST_ID, PRINCIPAL_ID)).rejects.toThrow('not found')
@@ -138,7 +196,13 @@ describe('addVoteOnBehalf', () => {
 
   it('throws BOARD_NOT_FOUND when board does not exist', async () => {
     mockDbExecute.mockResolvedValue([
-      { post_exists: true, board_exists: false, newly_voted: false, vote_count: 0 },
+      {
+        post_exists: true,
+        board_exists: false,
+        vote_allowed: true,
+        newly_voted: false,
+        vote_count: 0,
+      },
     ])
 
     await expect(addVoteOnBehalf(POST_ID, PRINCIPAL_ID)).rejects.toThrow('Board not found')
@@ -146,7 +210,13 @@ describe('addVoteOnBehalf', () => {
 
   it('passes source metadata to the CTE', async () => {
     mockDbExecute.mockResolvedValue([
-      { post_exists: true, board_exists: true, newly_voted: true, vote_count: 3 },
+      {
+        post_exists: true,
+        board_exists: true,
+        vote_allowed: true,
+        newly_voted: true,
+        vote_count: 3,
+      },
     ])
 
     const result = await addVoteOnBehalf(
@@ -159,5 +229,21 @@ describe('addVoteOnBehalf', () => {
 
     expect(result.voted).toBe(true)
     expect(mockDbExecute).toHaveBeenCalledTimes(1)
+  })
+
+  it('blocks proxy votes when post status category is closed', async () => {
+    mockDbExecute.mockResolvedValue([
+      {
+        post_exists: true,
+        board_exists: true,
+        vote_allowed: false,
+        newly_voted: false,
+        vote_count: 5,
+      },
+    ])
+
+    await expect(addVoteOnBehalf(POST_ID, PRINCIPAL_ID)).rejects.toThrow(
+      'Cannot vote on posts with closed status'
+    )
   })
 })

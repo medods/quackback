@@ -33,6 +33,7 @@ interface StatusInfo {
   id: string
   name: string
   color: string
+  category: 'active' | 'complete' | 'closed'
 }
 
 interface WidgetPostDetailProps {
@@ -144,6 +145,7 @@ export function WidgetPostDetail({
   }, [postId])
 
   const status = post?.statusId ? (statuses.find((s) => s.id === post.statusId) ?? null) : null
+  const isClosed = status?.category === 'closed'
   const viewerPrincipalId = post?.viewerPrincipalId ?? null
   const canManagePost = canManageWidgetPost(post?.principalId, viewerPrincipalId)
 
@@ -407,8 +409,9 @@ export function WidgetPostDetail({
             <WidgetVoteButton
               postId={postId as PostId}
               voteCount={post.voteCount}
+              disabled={isClosed}
               onBeforeVote={
-                canVote
+                !isClosed && canVote
                   ? async () => {
                       let success = false
                       await ensureSessionThen(() => {
@@ -418,7 +421,7 @@ export function WidgetPostDetail({
                     }
                   : undefined
               }
-              onAuthRequired={!canVote ? handleViewOnPortal : undefined}
+              onAuthRequired={!isClosed && !canVote ? handleViewOnPortal : undefined}
             />
           </div>
           <div className="flex-1 min-w-0">
