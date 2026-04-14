@@ -436,6 +436,7 @@ const updateWidgetConfigSchema = z.object({
   position: z.enum(['bottom-right', 'bottom-left']).optional(),
   identifyVerification: z.boolean().optional(),
   imageUploadsInWidget: z.boolean().optional(),
+  hideClosed: z.boolean().optional(),
   tabs: z
     .object({
       feedback: z.boolean().optional(),

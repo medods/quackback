@@ -38,29 +38,47 @@ import { settingsQueries } from '@/lib/client/queries/settings'
 import { adminQueries } from '@/lib/client/queries/admin'
 import { updateWidgetConfigFn, regenerateWidgetSecretFn } from '@/lib/server/functions/settings'
 
-function WidgetContentSettings({ config }: { config: { imageUploadsInWidget?: boolean } }) {
+function WidgetContentSettings({
+  config,
+}: {
+  config: { imageUploadsInWidget?: boolean; hideClosed?: boolean }
+}) {
   const router = useRouter()
-  const [saving, setSaving] = useState(false)
+  const [savingField, setSavingField] = useState<'image-uploads' | 'hide-closed' | null>(null)
   const [imageUploads, setImageUploads] = useState(config.imageUploadsInWidget ?? true)
+  const [hideClosed, setHideClosed] = useState(config.hideClosed ?? false)
   const [, startTransition] = useTransition()
 
   async function handleImageUploadsToggle(checked: boolean) {
     setImageUploads(checked)
-    setSaving(true)
+    setSavingField('image-uploads')
     try {
       await updateWidgetConfigFn({ data: { imageUploadsInWidget: checked } })
       startTransition(() => router.invalidate())
     } catch {
       setImageUploads(!checked)
     } finally {
-      setSaving(false)
+      setSavingField(null)
+    }
+  }
+
+  async function handleHideClosedToggle(checked: boolean) {
+    setHideClosed(checked)
+    setSavingField('hide-closed')
+    try {
+      await updateWidgetConfigFn({ data: { hideClosed: checked } })
+      startTransition(() => router.invalidate())
+    } catch {
+      setHideClosed(!checked)
+    } finally {
+      setSavingField(null)
     }
   }
 
   return (
     <SettingsCard
       title="Content"
-      description="Control what rich content types users can include in their feedback submissions."
+      description="Control submission content options and post visibility in widget lists."
     >
       <div className="flex items-center justify-between py-2">
         <div className="pr-4">
@@ -72,12 +90,32 @@ function WidgetContentSettings({ config }: { config: { imageUploadsInWidget?: bo
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <InlineSpinner visible={saving} />
+          <InlineSpinner visible={savingField === 'image-uploads'} />
           <Switch
             id="image-uploads-in-widget"
             checked={imageUploads}
             onCheckedChange={handleImageUploadsToggle}
-            disabled={saving}
+            disabled={savingField !== null}
+          />
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between py-2">
+        <div className="pr-4">
+          <Label htmlFor="hide-closed-in-widget" className="text-sm font-medium cursor-pointer">
+            Hide Closed
+          </Label>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Closed status posts will not appear in widget post lists.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <InlineSpinner visible={savingField === 'hide-closed'} />
+          <Switch
+            id="hide-closed-in-widget"
+            checked={hideClosed}
+            onCheckedChange={handleHideClosedToggle}
+            disabled={savingField !== null}
           />
         </div>
       </div>

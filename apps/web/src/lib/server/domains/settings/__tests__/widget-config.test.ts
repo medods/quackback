@@ -17,6 +17,10 @@ describe('Widget Config Types', () => {
       expect(DEFAULT_WIDGET_CONFIG.identifyVerification).toBe(false)
     })
 
+    it('should have hideClosed set to false', () => {
+      expect(DEFAULT_WIDGET_CONFIG.hideClosed).toBe(false)
+    })
+
     it('should not have optional fields set', () => {
       expect(DEFAULT_WIDGET_CONFIG.defaultBoard).toBeUndefined()
       expect(DEFAULT_WIDGET_CONFIG.position).toBeUndefined()
@@ -66,8 +70,10 @@ describe('Widget Config Types', () => {
         defaultBoard: 'bugs',
         position: 'bottom-left',
         identifyVerification: true,
+        hideClosed: true,
       }
       expect(update.position).toBe('bottom-left')
+      expect(update.hideClosed).toBe(true)
     })
   })
 
@@ -77,8 +83,10 @@ describe('Widget Config Types', () => {
         enabled: true,
         defaultBoard: 'bugs',
         position: 'bottom-right',
+        hideClosed: true,
       }
       expect(publicConfig.enabled).toBe(true)
+      expect(publicConfig.hideClosed).toBe(true)
       // identifyVerification is NOT in PublicWidgetConfig (type-level check)
       expect('identifyVerification' in publicConfig).toBe(false)
     })

@@ -2,7 +2,9 @@ import {
   db,
   eq,
   and,
+  or,
   inArray,
+  notInArray,
   asc,
   desc,
   sql,
@@ -14,6 +16,7 @@ import {
   votes,
   postStatuses,
   principal as principalTable,
+  type StatusCategory,
 } from '@/lib/server/db'
 import { toUuid, type PostId, type StatusId, type TagId, type PrincipalId } from '@quackback/ids'
 import type { PublicPostListResult } from './post.types'
@@ -89,6 +92,7 @@ interface PostListParams {
   search?: string
   statusIds?: StatusId[]
   statusSlugs?: string[]
+  excludeStatusCategories?: StatusCategory[]
   tagIds?: TagId[]
   sort?: SortOrder
   page?: number
@@ -96,7 +100,7 @@ interface PostListParams {
 }
 
 function buildPostFilterConditions(params: PostListParams) {
-  const { boardSlug, statusIds, statusSlugs, tagIds, search } = params
+  const { boardSlug, statusIds, statusSlugs, excludeStatusCategories, tagIds, search } = params
   const conditions = [
     eq(boards.isPublic, true),
     isNull(posts.canonicalPostId),
@@ -115,6 +119,22 @@ function buildPostFilterConditions(params: PostListParams) {
     conditions.push(inArray(posts.statusId, statusIdSubquery))
   } else if (statusIds && statusIds.length > 0) {
     conditions.push(inArray(posts.statusId, statusIds))
+  }
+
+  if (excludeStatusCategories && excludeStatusCategories.length > 0) {
+    const excludedStatusIdSubquery = db
+      .select({ id: postStatuses.id })
+      .from(postStatuses)
+      .where(
+        and(inArray(postStatuses.category, excludeStatusCategories), isNull(postStatuses.deletedAt))
+      )
+    const excludeStatusCategoryCondition = or(
+      isNull(posts.statusId),
+      notInArray(posts.statusId, excludedStatusIdSubquery)
+    )
+    if (excludeStatusCategoryCondition) {
+      conditions.push(excludeStatusCategoryCondition)
+    }
   }
 
   if (tagIds && tagIds.length > 0) {

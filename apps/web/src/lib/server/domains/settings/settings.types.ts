@@ -244,6 +244,8 @@ export interface WidgetConfig {
   }
   /** Whether authenticated widget users can upload images in feedback submissions */
   imageUploadsInWidget?: boolean
+  /** Whether widget post lists should hide posts with statuses in the "closed" category */
+  hideClosed?: boolean
 }
 
 /**
@@ -252,7 +254,7 @@ export interface WidgetConfig {
  */
 export type PublicWidgetConfig = Pick<
   WidgetConfig,
-  'enabled' | 'defaultBoard' | 'position' | 'tabs' | 'imageUploadsInWidget'
+  'enabled' | 'defaultBoard' | 'position' | 'tabs' | 'imageUploadsInWidget' | 'hideClosed'
 > & {
   /** Whether HMAC verification is required (derived from identifyVerification) */
   hmacRequired?: boolean
@@ -261,6 +263,7 @@ export type PublicWidgetConfig = Pick<
 export const DEFAULT_WIDGET_CONFIG: WidgetConfig = {
   enabled: false,
   identifyVerification: false,
+  hideClosed: false,
   tabs: {
     feedback: true,
     changelog: false,
@@ -280,6 +283,7 @@ export interface UpdateWidgetConfigInput {
     changelog?: boolean
   }
   imageUploadsInWidget?: boolean
+  hideClosed?: boolean
 }
 
 // =============================================================================

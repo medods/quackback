@@ -27,11 +27,13 @@ export const Route = createFileRoute('/widget/')({
   loader: async ({ context, location }) => {
     const { queryClient, settings, session } = context
     const search = location.search as z.infer<typeof searchSchema>
+    const hideClosed = settings?.publicWidgetConfig?.hideClosed ?? false
 
     const portalData = await queryClient.ensureQueryData(
       portalQueries.portalData({
         boardSlug: search.board,
         sort: 'top',
+        excludeStatusCategories: hideClosed ? ['closed'] : undefined,
         userId: session?.user?.id,
       })
     )
@@ -75,6 +77,7 @@ export const Route = createFileRoute('/widget/')({
         help: (settings?.featureFlags as { helpCenter?: boolean } | undefined)?.helpCenter ?? false,
       },
       imageUploadsInWidget: settings?.publicWidgetConfig?.imageUploadsInWidget ?? true,
+      hideClosed,
     }
   },
   component: WidgetPage,
@@ -107,8 +110,17 @@ interface WidgetOpenMessageData {
 }
 
 function WidgetPage() {
-  const { posts, postsHasMore, statuses, boards, orgSlug, features, tabs, imageUploadsInWidget } =
-    Route.useLoaderData()
+  const {
+    posts,
+    postsHasMore,
+    statuses,
+    boards,
+    orgSlug,
+    features,
+    tabs,
+    imageUploadsInWidget,
+    hideClosed,
+  } = Route.useLoaderData()
   const intl = useIntl()
   const { isIdentified, ensureSession } = useWidgetAuth()
   const canVote = isIdentified || features.anonymousVoting
@@ -349,6 +361,7 @@ function WidgetPage() {
           anonymousVotingEnabled={features.anonymousVoting}
           anonymousPostingEnabled={features.anonymousPosting}
           imageUploadsInWidget={imageUploadsInWidget}
+          hideClosed={hideClosed}
           initialSort={selectedSort ?? undefined}
           initialBoardSlug={selectedBoard ?? undefined}
           onSortChange={setSelectedSort}

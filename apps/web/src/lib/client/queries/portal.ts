@@ -27,6 +27,7 @@ export const portalQueries = {
     search?: string
     sort: 'top' | 'new' | 'trending'
     statusSlugs?: string[]
+    excludeStatusCategories?: Array<'active' | 'complete' | 'closed'>
     tagIds?: string[]
     userId?: string
   }) =>
@@ -38,6 +39,7 @@ export const portalQueries = {
         params.search,
         params.sort,
         params.statusSlugs,
+        params.excludeStatusCategories,
         params.tagIds,
         params.userId,
       ],

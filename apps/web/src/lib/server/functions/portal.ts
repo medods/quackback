@@ -46,6 +46,7 @@ const fetchPortalDataSchema = z.object({
   search: z.string().optional(),
   sort: sortSchema,
   statusSlugs: z.array(z.string()).optional(),
+  excludeStatusCategories: z.array(z.enum(['active', 'complete', 'closed'])).optional(),
   tagIds: z.array(z.string()).optional(),
   userId: z.string().optional(),
 })
@@ -86,6 +87,7 @@ export const fetchPortalData = createServerFn({ method: 'GET' })
           boardSlug: data.boardSlug,
           search: data.search,
           statusSlugs: data.statusSlugs,
+          excludeStatusCategories: data.excludeStatusCategories,
           tagIds: data.tagIds as TagId[] | undefined,
           sort: data.sort,
           page: 1,

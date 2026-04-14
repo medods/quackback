@@ -60,6 +60,7 @@ interface WidgetHomeProps {
   anonymousVotingEnabled?: boolean
   anonymousPostingEnabled?: boolean
   imageUploadsInWidget?: boolean
+  hideClosed?: boolean
   initialSort?: string
   initialBoardSlug?: string
   onSortChange?: (sort: string) => void
@@ -169,6 +170,7 @@ export function WidgetHome({
   anonymousVotingEnabled = true,
   anonymousPostingEnabled = false,
   imageUploadsInWidget = true,
+  hideClosed = false,
   initialSort,
   initialBoardSlug,
   onSortChange,
@@ -240,7 +242,14 @@ export function WidgetHome({
     isFetchingNextPage,
     isFetching: isFetchingPosts,
   } = useInfiniteQuery({
-    queryKey: ['widget', 'posts', 'popular', popularSort, activeBoardSlug ?? 'all'],
+    queryKey: [
+      'widget',
+      'posts',
+      'popular',
+      popularSort,
+      activeBoardSlug ?? 'all',
+      hideClosed ? 'hide-closed' : 'show-closed',
+    ],
     queryFn: ({ pageParam }) =>
       listPublicPostsFn({
         data: {
@@ -248,6 +257,7 @@ export function WidgetHome({
           page: pageParam,
           limit: 20,
           boardSlug: activeBoardSlug ?? undefined,
+          excludeStatusCategories: hideClosed ? ['closed'] : undefined,
         },
       }),
     initialPageParam: 1,
