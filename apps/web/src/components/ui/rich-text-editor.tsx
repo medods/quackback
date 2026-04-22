@@ -771,6 +771,7 @@ interface RichTextEditorProps {
   className?: string
   disabled?: boolean
   minHeight?: string
+  maxHeight?: string
   borderless?: boolean
   toolbarPosition?: 'top' | 'none'
   toolbarVariant?: 'default' | 'media-history'
@@ -792,6 +793,7 @@ function RichTextEditorBase({
   className,
   disabled = false,
   minHeight = '120px',
+  maxHeight,
   borderless = false,
   toolbarPosition = borderless ? 'none' : 'top',
   toolbarVariant = 'default',
@@ -831,9 +833,12 @@ function RichTextEditorBase({
         class: cn(
           'prose prose-sm prose-neutral dark:prose-invert max-w-none focus:outline-none',
           'min-h-[var(--editor-min-height)]',
+          maxHeight && 'max-h-[var(--editor-max-height)] overflow-y-auto',
           borderless ? 'py-0' : 'px-3 py-2'
         ),
-        style: `--editor-min-height: ${minHeight}`,
+        style: maxHeight
+          ? `--editor-min-height: ${minHeight}; --editor-max-height: ${maxHeight}`
+          : `--editor-min-height: ${minHeight}`,
       },
       handleDrop:
         features.images && onImageUpload
@@ -845,7 +850,7 @@ function RichTextEditorBase({
           : undefined,
     }),
 
-    [features.images, onImageUpload, defaultImageWidth, borderless, minHeight]
+    [features.images, onImageUpload, defaultImageWidth, borderless, minHeight, maxHeight]
   )
 
   // Stores the last JSON emitted by onUpdate so the value-sync useEffect can
@@ -956,6 +961,7 @@ function RichTextEditorBase({
       <ContextMenuTrigger asChild disabled={!features.images}>
         <div
           className={cn(
+            'flex min-h-0 flex-col',
             !borderless && 'overflow-hidden rounded-md border border-input bg-background',
             disabled && 'opacity-50 cursor-not-allowed',
             className
@@ -973,7 +979,9 @@ function RichTextEditorBase({
             />
           )}
 
-          <EditorContent editor={editor} />
+          <div className={cn(maxHeight && 'min-h-0 flex-1')}>
+            <EditorContent editor={editor} className={cn(maxHeight && 'h-full')} />
+          </div>
         </div>
       </ContextMenuTrigger>
 
@@ -1064,6 +1072,7 @@ export const RichTextEditor = memo(RichTextEditorBase, (prev, next) => {
     prev.disabled !== next.disabled ||
     prev.placeholder !== next.placeholder ||
     prev.minHeight !== next.minHeight ||
+    prev.maxHeight !== next.maxHeight ||
     prev.borderless !== next.borderless ||
     prev.toolbarPosition !== next.toolbarPosition ||
     prev.toolbarVariant !== next.toolbarVariant ||

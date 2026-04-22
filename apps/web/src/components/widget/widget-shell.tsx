@@ -68,9 +68,9 @@ export function WidgetShell({
 
   return (
     <div className="flex flex-col h-full bg-background text-foreground overflow-x-hidden">
-      <div className="flex items-center justify-between px-3 pt-2 pb-0.5 shrink-0">
-        <div className="flex items-center gap-1">
-          {onBack ? (
+      {onBack ? (
+        <div className="flex items-center justify-between px-3 pt-2 pb-0.5 shrink-0">
+          <div className="flex items-center gap-1">
             <button
               type="button"
               onClick={onBack}
@@ -82,9 +82,9 @@ export function WidgetShell({
             >
               <ArrowLeftIcon className="w-4 h-4 text-muted-foreground" />
             </button>
-          ) : null}
+          </div>
         </div>
-      </div>
+      ) : null}
 
       <div className="flex-1 overflow-hidden min-h-0">{children}</div>
 

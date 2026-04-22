@@ -656,6 +656,9 @@ const COLOR_VAR_LABELS: Record<string, string> = {
   '--input': 'Input',
   '--ring': 'Ring',
   '--success': 'Success',
+  '--success-color': 'Success Color',
+  '--success-border-color': 'Success Border',
+  '--success-background-color': 'Success Background',
   '--chart-1': 'Chart 1',
   '--chart-2': 'Chart 2',
   '--chart-3': 'Chart 3',
@@ -669,8 +672,14 @@ interface ManualThemeEditorProps {
   onColorChange: (varName: string, value: string) => void
 }
 
+const COLOR_FALLBACKS: Record<string, string> = {
+  '--success-color': '#8bc34a',
+  '--success-border-color': '#d1e7b7',
+  '--success-background-color': '#f3f9ed',
+}
+
 function ManualThemeEditor({ variables, defaults, onColorChange }: ManualThemeEditorProps) {
-  const colorVarNames = Object.keys(COLOR_VAR_LABELS).filter((name) => name in variables)
+  const colorVarNames = Object.keys(COLOR_VAR_LABELS)
   const debounceTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
   const debouncedColorChange = useCallback(
@@ -686,7 +695,8 @@ function ManualThemeEditor({ variables, defaults, onColorChange }: ManualThemeEd
   return (
     <div className="grid grid-cols-2 gap-y-1.5 pt-1" style={{ columnGap: '100px' }}>
       {colorVarNames.map((varName) => {
-        const currentValue = variables[varName] ?? ''
+        const currentValue =
+          variables[varName] ?? defaults[varName] ?? COLOR_FALLBACKS[varName] ?? ''
         const defaultValue = defaults[varName] ?? currentValue
         const isModified = currentValue !== defaultValue
 
@@ -699,6 +709,14 @@ function ManualThemeEditor({ variables, defaults, onColorChange }: ManualThemeEd
 
         const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
           const hex = e.target.value
+          if (
+            varName === '--success-color' ||
+            varName === '--success-border-color' ||
+            varName === '--success-background-color'
+          ) {
+            debouncedColorChange(varName, hex)
+            return
+          }
           const oklch = hexToOklch(hex)
           debouncedColorChange(varName, oklch)
         }

@@ -90,6 +90,8 @@
   "widget.commentForm.post": "Отправить",
   "widget.commentForm.postingAs": "Вы публикуете как {name}",
   "widget.commentForm.errorEmail": "Не удалось проверить email. Попробуйте еще раз.",
+  "widget.commentForm.errorPost": "Не удалось отправить комментарий. Попробуйте еще раз.",
+  "widget.error.contentTooLong": "Текст слишком длинный. Максимум {max} символов.",
   "widget.help.searchPlaceholder": "Поиск статей справки...",
   "widget.help.searching": "Поиск...",
   "widget.help.noResults": "Ничего не найдено",

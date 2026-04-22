@@ -4,6 +4,7 @@ import { useWidgetAuth } from './widget-auth-provider'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import type { JSONContent } from '@tiptap/react'
 import { serializeWidgetCommentMarkdown } from './widget-comment-markdown'
+import { resolveWidgetErrorMessage } from './widget-error-message'
 
 interface WidgetUser {
   id: string
@@ -75,13 +76,22 @@ export function WidgetCommentForm({
         setCommentText('')
       })
     } catch (err) {
+      const fallbackMessage = intl.formatMessage({
+        id: 'widget.commentForm.errorPost',
+        defaultMessage: 'Could not post comment. Please try again.',
+      })
       setError(
-        err instanceof Error
-          ? err.message
-          : intl.formatMessage({
-              id: 'widget.commentForm.errorPost',
-              defaultMessage: 'Could not post comment. Please try again.',
-            })
+        resolveWidgetErrorMessage(err, {
+          fallbackMessage,
+          contentTooLongMessage: (maxLength) =>
+            intl.formatMessage(
+              {
+                id: 'widget.error.contentTooLong',
+                defaultMessage: 'Text is too long. Maximum {max} characters.',
+              },
+              { max: maxLength }
+            ),
+        })
       )
     } finally {
       setIsSubmitting(false)

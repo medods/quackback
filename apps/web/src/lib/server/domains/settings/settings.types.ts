@@ -174,6 +174,9 @@ export interface ThemeColors {
   border?: string
   input?: string
   ring?: string
+  successColor?: string
+  successBorderColor?: string
+  successBackgroundColor?: string
   sidebarBackground?: string
   sidebarForeground?: string
   sidebarPrimary?: string

@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'react'
 import { z } from 'zod'
+import Papa from 'papaparse'
 import {
   ArrowUpTrayIcon,
   DocumentTextIcon,
@@ -10,7 +11,7 @@ import {
   ArrowDownTrayIcon,
 } from '@heroicons/react/24/solid'
 import { Button } from '@/components/ui/button'
-import { CSV_TEMPLATE } from '@/lib/shared/schemas/import'
+import { CSV_TEMPLATE, CSV_HEADERS, REQUIRED_HEADERS } from '@/lib/shared/schemas/import'
 import type { ImportResult } from '@/lib/server/domains/import/types'
 
 const errorResponseSchema = z.object({
@@ -29,16 +30,26 @@ interface BoardImportSectionProps {
 }
 
 type ImportState = 'idle' | 'uploading' | 'completed' | 'failed'
+type RequiredHeader = (typeof REQUIRED_HEADERS)[number]
+type CsvHeader = (typeof CSV_HEADERS)[number]
+
+function normalizeHeader(header: string): string {
+  return header.trim().toLowerCase().replace(/\s+/g, '_')
+}
 
 export function BoardImportSection({ boardId }: BoardImportSectionProps) {
   const [state, setState] = useState<ImportState>('idle')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<ImportResult | null>(null)
+  const [csvHeaders, setCsvHeaders] = useState<string[]>([])
+  const [headerMapping, setHeaderMapping] = useState<Partial<Record<CsvHeader, string>>>({})
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const handleFileSelect = useCallback((file: File) => {
+  const handleFileSelect = useCallback(async (file: File) => {
     setError(null)
+    setResult(null)
+
     if (!file.type.includes('csv') && !file.name.endsWith('.csv')) {
       setError('Please select a CSV file')
       return
@@ -47,6 +58,43 @@ export function BoardImportSection({ boardId }: BoardImportSectionProps) {
       setError('File size must be less than 10MB')
       return
     }
+
+    try {
+      const csvText = await file.text()
+      const parseResult = Papa.parse<Record<string, string>>(csvText, {
+        header: true,
+        skipEmptyLines: true,
+        preview: 1,
+      })
+
+      if (parseResult.errors.length > 0) {
+        setError(`CSV parsing error: ${parseResult.errors[0].message}`)
+        return
+      }
+
+      const headers = parseResult.meta.fields ?? []
+      if (headers.length === 0) {
+        setError('CSV must contain a header row')
+        return
+      }
+
+      const normalizedToOriginal = new Map(
+        headers.map((header) => [normalizeHeader(header), header])
+      )
+      const autoMapping: Partial<Record<CsvHeader, string>> = {}
+
+      for (const expectedHeader of CSV_HEADERS) {
+        const matchedHeader = normalizedToOriginal.get(expectedHeader)
+        if (matchedHeader) autoMapping[expectedHeader] = matchedHeader
+      }
+
+      setCsvHeaders(headers)
+      setHeaderMapping(autoMapping)
+    } catch {
+      setError('Failed to read CSV file')
+      return
+    }
+
     setSelectedFile(file)
   }, [])
 
@@ -54,7 +102,7 @@ export function BoardImportSection({ boardId }: BoardImportSectionProps) {
     (e: React.DragEvent) => {
       e.preventDefault()
       const file = e.dataTransfer.files[0]
-      if (file) handleFileSelect(file)
+      if (file) void handleFileSelect(file)
     },
     [handleFileSelect]
   )
@@ -62,12 +110,52 @@ export function BoardImportSection({ boardId }: BoardImportSectionProps) {
   const handleImport = async () => {
     if (!selectedFile) return
 
+    const missingMappings = REQUIRED_HEADERS.filter(
+      (requiredHeader) => !headerMapping[requiredHeader]
+    )
+    if (missingMappings.length > 0) {
+      setError(`Map required fields before import: ${missingMappings.join(', ')}`)
+      return
+    }
+
     setError(null)
     setState('uploading')
 
     try {
+      const csvText = await selectedFile.text()
+      const parseResult = Papa.parse<Record<string, string>>(csvText, {
+        header: true,
+        skipEmptyLines: true,
+      })
+
+      if (parseResult.errors.length > 0) {
+        throw new Error(`CSV parsing error: ${parseResult.errors[0].message}`)
+      }
+
+      const rows = parseResult.data as Record<string, string>[]
+      const transformedRows = rows.map((row) => {
+        const nextRow: Record<string, string> = { ...row }
+        for (const expectedHeader of CSV_HEADERS) {
+          const sourceHeader = headerMapping[expectedHeader]
+          if (sourceHeader) {
+            nextRow[expectedHeader] = row[sourceHeader] ?? ''
+          }
+        }
+        return nextRow
+      })
+
+      const expectedHeaderSet = new Set<string>(CSV_HEADERS)
+      const outputColumns = Array.from(
+        new Set([
+          ...CSV_HEADERS,
+          ...(parseResult.meta.fields ?? []).filter((header) => !expectedHeaderSet.has(header)),
+        ])
+      )
+      const transformedCsv = Papa.unparse(transformedRows, { columns: outputColumns })
+      const transformedFile = new File([transformedCsv], selectedFile.name, { type: 'text/csv' })
+
       const formData = new FormData()
-      formData.append('file', selectedFile)
+      formData.append('file', transformedFile)
       formData.append('boardId', boardId)
 
       const response = await fetch('/api/import', {
@@ -101,6 +189,8 @@ export function BoardImportSection({ boardId }: BoardImportSectionProps) {
     setSelectedFile(null)
     setError(null)
     setResult(null)
+    setCsvHeaders([])
+    setHeaderMapping({})
   }
 
   const downloadTemplate = () => {
@@ -128,7 +218,7 @@ export function BoardImportSection({ boardId }: BoardImportSectionProps) {
               type="file"
               accept=".csv,text/csv"
               className="hidden"
-              onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
+              onChange={(e) => e.target.files?.[0] && void handleFileSelect(e.target.files[0])}
             />
             {selectedFile ? (
               <div className="flex items-center justify-center gap-2">
@@ -138,6 +228,8 @@ export function BoardImportSection({ boardId }: BoardImportSectionProps) {
                   onClick={(e) => {
                     e.stopPropagation()
                     setSelectedFile(null)
+                    setCsvHeaders([])
+                    setHeaderMapping({})
                   }}
                   className="p-1 hover:bg-muted rounded"
                 >
@@ -157,6 +249,42 @@ export function BoardImportSection({ boardId }: BoardImportSectionProps) {
             )}
           </div>
 
+          {selectedFile && (
+            <div className="mt-4 rounded-lg border border-border/50 p-4 space-y-3">
+              <p className="text-sm font-medium">Column Mapping (required fields)</p>
+              <p className="text-xs text-muted-foreground">
+                Select which CSV column maps to import fields.
+              </p>
+              {CSV_HEADERS.map((expectedHeader) => (
+                <div key={expectedHeader} className="grid grid-cols-2 gap-3 items-center">
+                  <div className="text-sm">
+                    <span className="font-medium">{expectedHeader}</span>
+                    {REQUIRED_HEADERS.includes(expectedHeader as RequiredHeader) && (
+                      <span className="text-destructive ml-1">*</span>
+                    )}
+                  </div>
+                  <select
+                    className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                    value={headerMapping[expectedHeader] ?? ''}
+                    onChange={(e) =>
+                      setHeaderMapping((prev) => ({
+                        ...prev,
+                        [expectedHeader]: e.target.value || undefined,
+                      }))
+                    }
+                  >
+                    <option value="">Select column...</option>
+                    {csvHeaders.map((header) => (
+                      <option key={header} value={header}>
+                        {header}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+            </div>
+          )}
+
           {error && (
             <div className="mt-4 p-3 bg-destructive/10 text-destructive text-sm rounded-lg flex items-center gap-2">
               <ExclamationCircleIcon className="h-4 w-4 shrink-0" />
@@ -165,7 +293,12 @@ export function BoardImportSection({ boardId }: BoardImportSectionProps) {
           )}
 
           <div className="mt-4 flex items-center gap-2">
-            <Button onClick={handleImport} disabled={!selectedFile}>
+            <Button
+              onClick={handleImport}
+              disabled={
+                !selectedFile || REQUIRED_HEADERS.some((required) => !headerMapping[required])
+              }
+            >
               <ArrowUpTrayIcon className="h-4 w-4 mr-2" />
               Import Data
             </Button>

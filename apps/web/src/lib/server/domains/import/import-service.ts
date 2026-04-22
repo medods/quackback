@@ -194,7 +194,10 @@ export async function processBatch(
       'open'
 
     if (row.status) {
-      const status = statusMap.get(row.status.toLowerCase())
+      const normalizedStatus = row.status.toLowerCase().trim()
+      // CSV convenience: treat spaces as dashes for slug matching ("under review" -> "under-review")
+      const status =
+        statusMap.get(normalizedStatus) ?? statusMap.get(normalizedStatus.replace(/\s+/g, '-'))
       if (status) {
         statusId = status.id as StatusId
         // Map to legacy status based on category

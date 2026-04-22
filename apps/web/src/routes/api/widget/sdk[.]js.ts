@@ -29,6 +29,9 @@ function extractThemeFromCss(css: string): WidgetTheme {
     const rootBlock = rootMatch[1]
     theme.lightPrimary = parseCssVar(rootBlock, '--primary')
     theme.lightPrimaryForeground = parseCssVar(rootBlock, '--primary-foreground')
+    theme.lightSuccessColor = parseCssVar(rootBlock, '--success-color')
+    theme.lightSuccessBorderColor = parseCssVar(rootBlock, '--success-border-color')
+    theme.lightSuccessBackgroundColor = parseCssVar(rootBlock, '--success-background-color')
     theme.radius = parseCssVar(rootBlock, '--radius')
   }
 
@@ -38,6 +41,9 @@ function extractThemeFromCss(css: string): WidgetTheme {
     const darkBlock = darkMatch[1]
     theme.darkPrimary = parseCssVar(darkBlock, '--primary')
     theme.darkPrimaryForeground = parseCssVar(darkBlock, '--primary-foreground')
+    theme.darkSuccessColor = parseCssVar(darkBlock, '--success-color')
+    theme.darkSuccessBorderColor = parseCssVar(darkBlock, '--success-border-color')
+    theme.darkSuccessBackgroundColor = parseCssVar(darkBlock, '--success-background-color')
   }
 
   return theme
@@ -75,9 +81,17 @@ export const Route = createFileRoute('/api/widget/sdk.js')({
           if (light?.primary) theme.lightPrimary = oklchToHex(light.primary)
           if (light?.primaryForeground)
             theme.lightPrimaryForeground = oklchToHex(light.primaryForeground)
+          if (light?.successColor) theme.lightSuccessColor = light.successColor
+          if (light?.successBorderColor) theme.lightSuccessBorderColor = light.successBorderColor
+          if (light?.successBackgroundColor)
+            theme.lightSuccessBackgroundColor = light.successBackgroundColor
           if (dark?.primary) theme.darkPrimary = oklchToHex(dark.primary)
           if (dark?.primaryForeground)
             theme.darkPrimaryForeground = oklchToHex(dark.primaryForeground)
+          if (dark?.successColor) theme.darkSuccessColor = dark.successColor
+          if (dark?.successBorderColor) theme.darkSuccessBorderColor = dark.successBorderColor
+          if (dark?.successBackgroundColor)
+            theme.darkSuccessBackgroundColor = dark.successBackgroundColor
           if (light?.radius) theme.radius = light.radius
 
           // Custom CSS overrides (if any)
@@ -91,6 +105,18 @@ export const Route = createFileRoute('/api/widget/sdk.js')({
             if (cssOverrides.darkPrimary) theme.darkPrimary = cssOverrides.darkPrimary
             if (cssOverrides.darkPrimaryForeground)
               theme.darkPrimaryForeground = cssOverrides.darkPrimaryForeground
+            if (cssOverrides.lightSuccessColor)
+              theme.lightSuccessColor = cssOverrides.lightSuccessColor
+            if (cssOverrides.lightSuccessBorderColor)
+              theme.lightSuccessBorderColor = cssOverrides.lightSuccessBorderColor
+            if (cssOverrides.lightSuccessBackgroundColor)
+              theme.lightSuccessBackgroundColor = cssOverrides.lightSuccessBackgroundColor
+            if (cssOverrides.darkSuccessColor)
+              theme.darkSuccessColor = cssOverrides.darkSuccessColor
+            if (cssOverrides.darkSuccessBorderColor)
+              theme.darkSuccessBorderColor = cssOverrides.darkSuccessBorderColor
+            if (cssOverrides.darkSuccessBackgroundColor)
+              theme.darkSuccessBackgroundColor = cssOverrides.darkSuccessBackgroundColor
             if (cssOverrides.radius) theme.radius = cssOverrides.radius
           }
         } catch {

@@ -22,6 +22,9 @@ export const variableMap: Record<string, string> = {
   input: '--input',
   ring: '--ring',
   success: '--success',
+  successColor: '--success-color',
+  successBorderColor: '--success-border-color',
+  successBackgroundColor: '--success-background-color',
   chart1: '--chart-1',
   chart2: '--chart-2',
   chart3: '--chart-3',
@@ -127,6 +130,31 @@ export function replaceCssVar(css: string, varName: string, newValue: string): s
   const escaped = varName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   const pattern = new RegExp(`(${escaped}\\s*:\\s*)([^;]+)(;)`, 'g')
   let result = css.replace(pattern, `$1${newValue}$3`)
+
+  // If the variable does not exist yet (e.g. newly introduced color token),
+  // append it to :root and .dark blocks so color picker changes persist.
+  if (result === css) {
+    const appendVarToBlock = (input: string, selector: ':root' | '.dark'): string => {
+      const escapedSelector = selector === ':root' ? ':root' : '\\.dark'
+      const blockPattern = new RegExp(`(${escapedSelector}\\s*\\{)([^}]*)\\}`)
+      return input.replace(blockPattern, (_match, start, body: string) => {
+        const trimmed = body.trim()
+        const needsSemicolon = trimmed.length > 0 && !trimmed.endsWith(';')
+        const separator = trimmed.length > 0 ? (needsSemicolon ? '; ' : ' ') : ' '
+        return `${start}${body}${separator}${varName}: ${newValue};}`
+      })
+    }
+
+    const hadRoot = /:root\s*\{/.test(result)
+    const hadDark = /\.dark\s*\{/.test(result)
+
+    if (hadRoot) result = appendVarToBlock(result, ':root')
+    if (hadDark) result = appendVarToBlock(result, '.dark')
+
+    if (!hadRoot && !hadDark) {
+      result += `\n:root { ${varName}: ${newValue}; }\n.dark { ${varName}: ${newValue}; }\n`
+    }
+  }
 
   // For --font-sans, also update font-family declarations
   if (varName === '--font-sans') {

@@ -452,6 +452,7 @@ function WidgetPage() {
           initialHasMore={postsHasMore}
           statuses={statuses}
           boards={boards}
+          isActive={view === 'home'}
           onPostSelect={handlePostSelect}
           onPostCreated={handlePostCreated}
           anonymousVotingEnabled={features.anonymousVoting}

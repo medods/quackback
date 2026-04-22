@@ -8,7 +8,6 @@ export const importRowSchema = z.object({
   content: z.string().max(10000, 'Content must be 10000 characters or less'),
   status: z.string().optional(),
   tags: z.string().optional(),
-  board: z.string().optional(),
   author_name: z.string().optional(),
   author_email: z.string().email('Invalid email format').optional().or(z.literal('')),
   vote_count: z.string().optional(),
@@ -34,7 +33,6 @@ export const CSV_HEADERS = [
   'content',
   'status',
   'tags',
-  'board',
   'author_name',
   'author_email',
   'vote_count',
@@ -49,7 +47,7 @@ export const REQUIRED_HEADERS = ['title', 'content'] as const
 /**
  * CSV template for download
  */
-export const CSV_TEMPLATE = `title,content,status,tags,board,author_name,author_email,vote_count,created_at
-"Add dark mode support","It would be great to have a dark mode option for the app. Many users prefer working in low-light environments.","open","feature,ui","","John Doe","john@example.com","5","2024-01-15T10:30:00Z"
+export const CSV_TEMPLATE = `title,content,status,tags,author_name,author_email,vote_count,created_at
+"Add dark mode support","It would be great to have a dark mode option for the app. Many users prefer working in low-light environments.","open","feature,ui","John Doe","john@example.com","5","2024-01-15T10:30:00Z"
 "Fix login timeout","Users are being logged out too quickly. The session timeout seems too aggressive.","under_review","bug","","","","2",""
 `

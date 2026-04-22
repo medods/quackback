@@ -52,14 +52,28 @@ export class ImportUserResolver {
 
     // Look up existing principal by email
     const existing = await db
-      .select({ principalId: principal.id })
+      .select({
+        principalId: principal.id,
+        principalDisplayName: principal.displayName,
+        userName: user.name,
+      })
       .from(user)
       .innerJoin(principal, eq(principal.userId, user.id))
       .where(eq(user.email, normalizedEmail))
       .limit(1)
 
     if (existing.length > 0) {
-      const principalId = existing[0].principalId as PrincipalId
+      const record = existing[0]
+      const principalId = record.principalId as PrincipalId
+
+      // Backfill missing displayName for older/imported records.
+      if (!record.principalDisplayName) {
+        const displayName = name?.trim() || record.userName?.trim() || normalizedEmail.split('@')[0]
+        if (displayName) {
+          await db.update(principal).set({ displayName }).where(eq(principal.id, principalId))
+        }
+      }
+
       this.cache.set(normalizedEmail, principalId)
       return principalId
     }
@@ -106,6 +120,7 @@ export class ImportUserResolver {
           id: u.principalId,
           userId: u.userId,
           role: 'user' as const,
+          displayName: u.name,
           createdAt: new Date(),
         }))
       )

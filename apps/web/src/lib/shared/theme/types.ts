@@ -19,6 +19,9 @@ export interface ThemeVariables {
   input?: string
   ring?: string
   success?: string
+  successColor?: string
+  successBorderColor?: string
+  successBackgroundColor?: string
   chart1?: string
   chart2?: string
   chart3?: string

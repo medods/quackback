@@ -36,7 +36,10 @@
     --accent-foreground: oklch(0.145 0 0);
     --destructive: oklch(0.577 0.245 27);
     --destructive-foreground: oklch(0.577 0.245 27);
-    --success: oklch(0.696 0.149 163);
+    --success-color: #8bc34a;
+    --success-border-color: #d1e7b7;
+    --success-background-color: #f3f9ed;
+    --success: var(--success-color);
     --success-foreground: oklch(0.985 0 0);
     --border: oklch(0.922 0 0);
     --input: oklch(0.922 0 0);
@@ -80,6 +83,9 @@
     --nav-inactive-color: var(--muted-foreground);
     --portal-button-background: var(--primary);
     --portal-button-foreground: var(--primary-foreground);
+    --widget-success-color: var(--success-color);
+    --widget-success-border-color: var(--success-border-color);
+    --widget-success-background-color: var(--success-background-color);
   }
 
   .dark {
@@ -100,7 +106,10 @@
     --accent-foreground: oklch(0.985 0 0);
     --destructive: oklch(0.396 0.141 25);
     --destructive-foreground: oklch(0.637 0.237 25);
-    --success: oklch(0.696 0.149 163);
+    --success-color: #8bc34a;
+    --success-border-color: #d1e7b7;
+    --success-background-color: #f3f9ed;
+    --success: var(--success-color);
     --success-foreground: oklch(0.985 0 0);
     --border: oklch(0.269 0 0);
     --input: oklch(0.269 0 0);
@@ -139,6 +148,9 @@
     --nav-inactive-color: var(--muted-foreground);
     --portal-button-background: var(--primary);
     --portal-button-foreground: var(--primary-foreground);
+    --widget-success-color: var(--success-color);
+    --widget-success-border-color: var(--success-border-color);
+    --widget-success-background-color: var(--success-background-color);
   }
 
   @theme inline {
@@ -367,4 +379,3 @@ a svg,
 .custom-scrollbar-hover:hover::-webkit-scrollbar-thumb:hover {
   background: var(--color-muted-foreground);
 }
-

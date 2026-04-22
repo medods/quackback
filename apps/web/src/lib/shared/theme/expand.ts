@@ -10,6 +10,9 @@ export interface MinimalThemeVariables {
   border: string
   destructive: string
   success: string
+  successColor?: string
+  successBorderColor?: string
+  successBackgroundColor?: string
   ring?: string
   fontSans?: string
   radius?: string
@@ -101,6 +104,10 @@ export function expandTheme(
   const destructiveForeground = computeContrastForeground(minimal.destructive)
   const charts = generateChartColors(minimal.primary)
 
+  const successColor = minimal.successColor ?? '#8bc34a'
+  const successBorderColor = minimal.successBorderColor ?? '#d1e7b7'
+  const successBackgroundColor = minimal.successBackgroundColor ?? '#f3f9ed'
+
   return {
     primary: minimal.primary,
     background: minimal.background,
@@ -111,6 +118,9 @@ export function expandTheme(
     border: minimal.border,
     destructive: minimal.destructive,
     success: minimal.success,
+    successColor,
+    successBorderColor,
+    successBackgroundColor,
     primaryForeground,
     ring: minimal.ring ?? minimal.primary,
     cardForeground: minimal.foreground,
@@ -144,6 +154,9 @@ export function extractMinimal(vars: ThemeVariables): MinimalThemeVariables {
     border: vars.border!,
     destructive: vars.destructive!,
     success: vars.success!,
+    successColor: vars.successColor,
+    successBorderColor: vars.successBorderColor,
+    successBackgroundColor: vars.successBackgroundColor,
     ring: vars.ring !== vars.primary ? vars.ring : undefined,
     fontSans: vars.fontSans,
     radius: vars.radius,

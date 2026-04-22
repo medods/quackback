@@ -41,14 +41,18 @@ function DialogContent({
   children,
   showCloseButton = true,
   instant = false,
+  overlayClassName,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
   instant?: boolean
+  overlayClassName?: string
 }) {
   return (
     <DialogPortal data-slot="dialog-portal">
-      <DialogOverlay className={instant ? '!animate-none !duration-0' : undefined} />
+      <DialogOverlay
+        className={cn(instant ? '!animate-none !duration-0' : undefined, overlayClassName)}
+      />
       <DialogPrimitive.Content
         aria-describedby={undefined}
         data-slot="dialog-content"

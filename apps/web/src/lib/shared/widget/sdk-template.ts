@@ -15,6 +15,12 @@ export interface WidgetTheme {
   lightPrimaryForeground?: string
   darkPrimary?: string
   darkPrimaryForeground?: string
+  lightSuccessColor?: string
+  lightSuccessBorderColor?: string
+  lightSuccessBackgroundColor?: string
+  darkSuccessColor?: string
+  darkSuccessBorderColor?: string
+  darkSuccessBackgroundColor?: string
   radius?: string
   themeMode?: 'light' | 'dark' | 'user'
 }
@@ -32,6 +38,13 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
     lightPrimaryFg: t.lightPrimaryForeground ?? '#ffffff',
     darkPrimary: t.darkPrimary ?? t.lightPrimary ?? '#6366f1',
     darkPrimaryFg: t.darkPrimaryForeground ?? t.lightPrimaryForeground ?? '#ffffff',
+    lightSuccessColor: t.lightSuccessColor ?? '#8bc34a',
+    lightSuccessBorderColor: t.lightSuccessBorderColor ?? '#d1e7b7',
+    lightSuccessBackgroundColor: t.lightSuccessBackgroundColor ?? '#f3f9ed',
+    darkSuccessColor: t.darkSuccessColor ?? t.lightSuccessColor ?? '#8bc34a',
+    darkSuccessBorderColor: t.darkSuccessBorderColor ?? t.lightSuccessBorderColor ?? '#d1e7b7',
+    darkSuccessBackgroundColor:
+      t.darkSuccessBackgroundColor ?? t.lightSuccessBackgroundColor ?? '#f3f9ed',
     radius: t.radius ?? '24px',
     themeMode: t.themeMode ?? 'user',
   })};
@@ -372,6 +385,10 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
     return {
       bg: customColor || (dark ? THEME.darkPrimary : THEME.lightPrimary),
       fg: dark ? THEME.darkPrimaryFg : THEME.lightPrimaryFg,
+      success: dark ? THEME.darkSuccessColor : THEME.lightSuccessColor,
+      successBorder: dark ? THEME.darkSuccessBorderColor : THEME.lightSuccessBorderColor,
+      successBackground:
+        dark ? THEME.darkSuccessBackgroundColor : THEME.lightSuccessBackgroundColor,
     };
   }
 
@@ -380,6 +397,7 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
     var colors = getThemeColors();
     trigger.style.backgroundColor = colors.bg;
     trigger.style.color = colors.fg;
+    trigger.style.borderColor = colors.successBorder;
   }
 
   function createTrigger() {
@@ -399,7 +417,7 @@ export function buildWidgetSDK(baseUrl: string, theme?: WidgetTheme): string {
       width: "48px",
       height: "48px",
       padding: "0",
-      border: "none",
+      border: "1px solid " + colors.successBorder,
       borderRadius: "50%",
       backgroundColor: colors.bg,
       color: colors.fg,

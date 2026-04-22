@@ -28,6 +28,7 @@ import { WidgetPortalTitle } from './widget-portal-title'
 import type { CommentId, PostId } from '@quackback/ids'
 import { useWidgetImageUpload } from '@/lib/client/hooks/use-image-upload'
 import type { JSONContent } from '@tiptap/react'
+import { resolveWidgetErrorMessage } from './widget-error-message'
 
 interface StatusInfo {
   id: string
@@ -69,21 +70,6 @@ export function canManageWidgetPost(
   viewerPrincipalId: string | null | undefined
 ): boolean {
   return !!postPrincipalId && !!viewerPrincipalId && postPrincipalId === viewerPrincipalId
-}
-
-function isUnsafeWidgetErrorMessage(message: string): boolean {
-  const normalized = message.toLowerCase()
-  return (
-    normalized.includes('failed query') ||
-    normalized.includes('sql') ||
-    normalized.includes('select ') ||
-    normalized.includes('insert ') ||
-    normalized.includes('update ') ||
-    normalized.includes('delete ') ||
-    normalized.includes('from "') ||
-    normalized.includes('where (') ||
-    normalized.includes('params:')
-  )
 }
 
 export function WidgetPostDetail({
@@ -267,11 +253,17 @@ export function WidgetPostDetail({
         defaultMessage: 'Could not edit post. Please try again.',
       })
       setPostActionError(
-        err instanceof Error
-          ? isUnsafeWidgetErrorMessage(err.message)
-            ? fallbackMessage
-            : err.message
-          : fallbackMessage
+        resolveWidgetErrorMessage(err, {
+          fallbackMessage,
+          contentTooLongMessage: (maxLength) =>
+            intl.formatMessage(
+              {
+                id: 'widget.error.contentTooLong',
+                defaultMessage: 'Text is too long. Maximum {max} characters.',
+              },
+              { max: maxLength }
+            ),
+        })
       )
     } finally {
       setIsSavingPost(false)
@@ -312,11 +304,17 @@ export function WidgetPostDetail({
         defaultMessage: 'Request failed. Please try again.',
       })
       setPostActionError(
-        err instanceof Error
-          ? isUnsafeWidgetErrorMessage(err.message)
-            ? fallbackMessage
-            : err.message
-          : fallbackMessage
+        resolveWidgetErrorMessage(err, {
+          fallbackMessage,
+          contentTooLongMessage: (maxLength) =>
+            intl.formatMessage(
+              {
+                id: 'widget.error.contentTooLong',
+                defaultMessage: 'Text is too long. Maximum {max} characters.',
+              },
+              { max: maxLength }
+            ),
+        })
       )
     } finally {
       setIsDeletingPost(false)

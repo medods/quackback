@@ -1,7 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { PencilIcon, Squares2X2Icon } from '@heroicons/react/24/solid'
+import { PlusIcon, Squares2X2Icon } from '@heroicons/react/24/solid'
 import { LightBulbIcon, MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline'
-import { AnimatePresence, motion } from 'framer-motion'
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
 import { FormattedMessage, useIntl } from 'react-intl'
 import {
@@ -11,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { listPublicPostsFn } from '@/lib/server/functions/public-posts'
 import { useInfiniteScroll } from '@/lib/client/hooks/use-infinite-scroll'
 import { widgetQueryKeys } from '@/lib/client/hooks/use-widget-vote'
@@ -50,6 +50,7 @@ interface WidgetHomeProps {
   initialHasMore?: boolean
   statuses: StatusInfo[]
   boards: BoardInfo[]
+  isActive?: boolean
   onPostSelect?: (postId: string) => void
   onPostCreated?: (post: {
     id: string
@@ -168,6 +169,7 @@ export function WidgetHome({
   initialHasMore = false,
   statuses,
   boards,
+  isActive = true,
   onPostSelect,
   onPostCreated,
   anonymousVotingEnabled = true,
@@ -194,13 +196,12 @@ export function WidgetHome({
   } = useWidgetAuth()
   const { upload: uploadImage } = useWidgetImageUpload()
   const canUploadImages = isIdentified && imageUploadsInWidget
-  const inputRef = useRef<HTMLInputElement>(null)
   const canVote = isIdentified || anonymousVotingEnabled
   const canPost = isIdentified || anonymousPostingEnabled
   const needsEmail = !isIdentified && !hmacRequired && !anonymousPostingEnabled
 
   const [title, setTitle] = useState('')
-  const [expanded, setExpanded] = useState(false)
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [selectedBoardId, setSelectedBoardId] = useState(boards[0]?.id ?? '')
   const [contentJson, setContentJson] = useState<JSONContent | null>(null)
   const [contentHtml, setContentHtml] = useState('')
@@ -232,8 +233,6 @@ export function WidgetHome({
   const [popularSearch, setPopularSearch] = useState('')
   const [debouncedPopularSearch, setDebouncedPopularSearch] = useState('')
   const popularSearchDebounceRef = useRef<ReturnType<typeof setTimeout>>(null)
-  const [popularSearchOpen, setPopularSearchOpen] = useState(false)
-  const popularSearchInputRef = useRef<HTMLInputElement>(null)
 
   const statusMap = useMemo(() => new Map(statuses.map((s) => [s.id, s])), [statuses])
 
@@ -373,22 +372,19 @@ export function WidgetHome({
     }
   }, [popularSearch])
 
-  useEffect(() => {
-    if (popularSearchOpen) {
-      popularSearchInputRef.current?.focus()
-    } else {
-      setPopularSearch('')
-    }
-  }, [popularSearchOpen])
-
-  function collapseForm() {
-    setExpanded(false)
+  function resetCreateForm() {
     setTitle('')
     setContentJson(null)
     setContentHtml('')
     setEmail('')
     setName('')
     setError(null)
+    setSimilarPostResults(null)
+  }
+
+  function closeCreateModal() {
+    setIsCreateModalOpen(false)
+    resetCreateForm()
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -484,7 +480,7 @@ export function WidgetHome({
       void queryClient.invalidateQueries({ queryKey: ['widget', 'posts', 'popular'] })
       void queryClient.invalidateQueries({ queryKey: ['widget', 'search', 'popular'] })
 
-      collapseForm()
+      closeCreateModal()
     } catch {
       setError(
         intl.formatMessage({
@@ -497,437 +493,130 @@ export function WidgetHome({
     }
   }
 
-  const canSubmitForm = title.trim() && (!needsEmail || email.trim()) && (canPost || needsEmail)
+  const canSubmitForm =
+    Boolean(title.trim()) && (!needsEmail || Boolean(email.trim())) && (canPost || needsEmail)
+  const hasSimilarPosts =
+    !isSimilarSearching && Boolean(similarPostResults && similarPostResults.posts.length > 0)
+  const similarPosts = hasSimilarPosts ? (similarPostResults?.posts.slice(0, 3) ?? []) : []
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col h-full">
+    <div className="flex flex-col h-full">
       <div className="flex-1 min-h-0">
         <div className="w-full h-full min-h-0 px-3 pt-2 pb-3 flex flex-col">
-          <motion.div
-            className="rounded-lg border border-border bg-card overflow-hidden"
-            initial={false}
-            animate={{
-              boxShadow: expanded
-                ? '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)'
-                : '0 1px 2px 0 rgb(0 0 0 / 0.05)',
-            }}
-            transition={{ duration: 0.2 }}
-          >
-            <AnimatePresence>
-              {expanded && boards.length > 1 && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="overflow-hidden"
-                >
-                  <div className="flex items-center px-3 pt-2.5 pb-0.5">
-                    <span className="text-[11px] text-muted-foreground me-1">
-                      <FormattedMessage
-                        id="widget.home.posting.postingTo"
-                        defaultMessage="Posting to"
-                      />
-                    </span>
-                    <Select value={selectedBoardId} onValueChange={setSelectedBoardId}>
-                      <SelectTrigger
-                        size="xs"
-                        className="border-0 bg-transparent shadow-none font-medium text-foreground hover:text-foreground/80 focus-visible:ring-0"
-                      >
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent align="start">
-                        {boards.map((b) => (
-                          <SelectItem key={b.id} value={b.id} className="text-xs py-1">
-                            {b.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            <div className="flex items-center gap-2.5 px-3 py-2.5">
-              <AnimatePresence>
-                {!expanded && (
-                  <motion.div
-                    initial={false}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.8, width: 0, marginRight: -10 }}
-                    transition={{ duration: 0.2 }}
-                    className="flex-shrink-0 w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center"
-                  >
-                    <PencilIcon className="w-3.5 h-3.5 text-primary" />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              <motion.input
-                ref={inputRef}
-                type="text"
-                placeholder={intl.formatMessage({
-                  id: 'widget.home.input.placeholder',
-                  defaultMessage: "What's your idea?",
-                })}
-                value={title}
-                onChange={(e) => {
-                  const val = e.target.value
-                  setTitle(val)
-                  if (val && !expanded) setExpanded(true)
-                  if (!val && expanded && !contentHtml.trim()) setExpanded(false)
+          <div className="shrink-0 space-y-2">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCreateModalOpen(true)
+                  setError(null)
                 }}
-                onFocus={() => {
-                  if (title && !expanded) setExpanded(true)
-                }}
-                className="flex-1 bg-transparent border-0 outline-none text-foreground placeholder:text-muted-foreground/50 placeholder:font-normal caret-primary"
-                initial={false}
-                animate={{
-                  fontSize: expanded ? '1rem' : '0.875rem',
-                  fontWeight: expanded ? 600 : 400,
-                }}
-                transition={{ duration: 0.2 }}
-              />
-
-              <AnimatePresence>
-                {!expanded && (
-                  <motion.button
+                className="shrink-0 inline-flex h-9 items-center gap-1.5 rounded-md border border-[var(--success-border-color)] bg-[var(--success-background-color)] px-3 text-[13px] uppercase text-[var(--success-color)] transition-colors hover:border-[var(--success-color)] hover:bg-[var(--success-color)] hover:text-white focus-visible:ring-2 focus-visible:ring-[var(--success-background-color)]"
+              >
+                <PlusIcon className="h-5 w-5" />
+                <FormattedMessage id="widget.home.form.newRequest" defaultMessage="New request" />
+              </button>
+              <div className="flex h-9 min-w-0 flex-1 items-center gap-1.5 rounded-md border border-border/70 bg-card px-2">
+                <MagnifyingGlassIcon className="h-4 w-4 shrink-0 text-muted-foreground/60" />
+                <input
+                  type="text"
+                  value={popularSearch}
+                  onChange={(e) => setPopularSearch(e.target.value)}
+                  placeholder={intl.formatMessage({
+                    id: 'widget.home.popular.search.placeholder',
+                    defaultMessage: 'Search ideas...',
+                  })}
+                  className="h-full min-w-0 flex-1 bg-transparent text-xs text-foreground placeholder:text-muted-foreground/50 outline-none"
+                />
+                {popularSearch && (
+                  <button
                     type="button"
-                    initial={{ opacity: 0, x: 8 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 8 }}
-                    transition={{ duration: 0.2 }}
-                    className="shrink-0 px-2.5 py-1 text-[11px] font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-                    onClick={() => {
-                      setExpanded(true)
-                      requestAnimationFrame(() => inputRef.current?.focus())
-                    }}
+                    onClick={() => setPopularSearch('')}
+                    className="shrink-0 text-muted-foreground/60 transition-colors hover:text-foreground"
+                    aria-label={intl.formatMessage({
+                      id: 'widget.home.popular.search.clear',
+                      defaultMessage: 'Clear search',
+                    })}
                   >
-                    <FormattedMessage
-                      id="widget.home.form.newRequest"
-                      defaultMessage="New request"
-                    />
-                  </motion.button>
+                    <XMarkIcon className="h-4 w-4" />
+                  </button>
                 )}
-              </AnimatePresence>
+              </div>
             </div>
 
-            <AnimatePresence>
-              {expanded && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
-                  className="overflow-hidden"
+            <div className="flex items-center gap-2">
+              <Select
+                value={popularSort}
+                onValueChange={(value) => {
+                  const sort = value as WidgetPopularSort
+                  setPopularSort(sort)
+                  onSortChange?.(sort)
+                }}
+              >
+                <SelectTrigger
+                  size="xs"
+                  className="h-8 min-h-8 border-border/60 bg-card px-2 text-[11px]"
                 >
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.2, delay: 0.1 }}
-                    className="px-3 pb-2"
-                  >
-                    <RichTextEditor
-                      value={contentJson || ''}
-                      onChange={handleEditorChange}
-                      placeholder={intl.formatMessage({
-                        id: 'widget.home.input.details',
-                        defaultMessage: 'Add more details...',
-                      })}
-                      minHeight="80px"
-                      borderless
-                      toolbarPosition="top"
-                      toolbarVariant="media-history"
-                      defaultImageWidth={320}
-                      features={{
-                        images: canUploadImages,
-                        bubbleMenu: false,
-                        slashMenu: false,
-                      }}
-                      onImageUpload={canUploadImages ? uploadImage : undefined}
-                      className="text-sm"
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent align="start">
+                  <SelectItem value="top" className="text-xs py-1">
+                    <FormattedMessage
+                      id="widget.home.popular.sort.top"
+                      defaultMessage="Most votes"
                     />
-                  </motion.div>
+                  </SelectItem>
+                  <SelectItem value="least" className="text-xs py-1">
+                    <FormattedMessage
+                      id="widget.home.popular.sort.least"
+                      defaultMessage="Least votes"
+                    />
+                  </SelectItem>
+                  <SelectItem value="new" className="text-xs py-1">
+                    <FormattedMessage id="widget.home.popular.sort.new" defaultMessage="Newest" />
+                  </SelectItem>
+                  <SelectItem value="old" className="text-xs py-1">
+                    <FormattedMessage id="widget.home.popular.sort.old" defaultMessage="Oldest" />
+                  </SelectItem>
+                  <SelectItem value="trending" className="text-xs py-1">
+                    <FormattedMessage
+                      id="widget.home.popular.sort.trending"
+                      defaultMessage="Trending"
+                    />
+                  </SelectItem>
+                </SelectContent>
+              </Select>
 
-                  <AnimatePresence>
-                    {!isSimilarSearching &&
-                      similarPostResults &&
-                      similarPostResults.posts.length > 0 && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.15, ease: 'easeOut' }}
-                          className="overflow-hidden"
-                        >
-                          <div className="px-3 pb-2">
-                            <p className="text-[10px] font-medium text-muted-foreground/60 flex items-center gap-1 mb-1.5">
-                              <LightBulbIcon className="w-3 h-3" />
-                              <FormattedMessage
-                                id="widget.home.similar.heading"
-                                defaultMessage="Similar ideas"
-                              />
-                            </p>
-                            <div className="space-y-0.5">
-                              {similarPostResults.posts.slice(0, 3).map((post) => (
-                                <WidgetPostRow
-                                  key={post.id}
-                                  post={post}
-                                  statusMap={statusMap}
-                                  compact
-                                  canVote={canVote}
-                                  ensureSessionThen={ensureSessionThen}
-                                  onAuthRequired={() => handleAuthRequired(post.id)}
-                                  onSelect={() => onPostSelect?.(post.id)}
-                                />
-                              ))}
-                            </div>
-                          </div>
-                        </motion.div>
-                      )}
-                  </AnimatePresence>
-
-                  {error && (
-                    <div className="px-3 pb-2">
-                      <div className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
-                        {error}
-                      </div>
-                    </div>
-                  )}
-
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.2, delay: 0.15 }}
-                    className="border-t border-border bg-muted/30"
-                  >
-                    {needsEmail && (
-                      <div className="px-3 pt-2 pb-1 flex gap-2">
-                        <input
-                          type="email"
-                          required
-                          placeholder={intl.formatMessage({
-                            id: 'widget.home.form.emailPlaceholder',
-                            defaultMessage: 'Your email',
-                          })}
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          className={`flex-1 min-w-0 ${identityInputCls}`}
-                        />
-                        <input
-                          type="text"
-                          placeholder={intl.formatMessage({
-                            id: 'widget.home.form.namePlaceholder',
-                            defaultMessage: 'Name (optional)',
-                          })}
-                          value={name}
-                          onChange={(e) => setName(e.target.value)}
-                          className={`w-28 shrink-0 ${identityInputCls}`}
-                        />
-                      </div>
-                    )}
-                    <div className="flex items-center justify-between px-3 py-2">
-                      <p className="text-[11px] text-muted-foreground truncate me-2">
-                        {user ? (
-                          <FormattedMessage
-                            id="widget.home.posting.postingAs"
-                            defaultMessage="Posting as {name}"
-                            values={{
-                              name: (
-                                <span className="font-medium text-foreground">
-                                  {user.name || user.email}
-                                </span>
-                              ),
-                            }}
-                          />
-                        ) : needsEmail ? (
-                          email.trim() ? (
-                            <FormattedMessage
-                              id="widget.home.posting.postingAs"
-                              defaultMessage="Posting as {name}"
-                              values={{
-                                name: (
-                                  <span className="font-medium text-foreground">
-                                    {email.trim()}
-                                  </span>
-                                ),
-                              }}
-                            />
-                          ) : (
-                            <FormattedMessage
-                              id="widget.home.posting.emailRequired"
-                              defaultMessage="Your email is required"
-                            />
-                          )
-                        ) : (
-                          <FormattedMessage
-                            id="widget.home.posting.postingAnonymously"
-                            defaultMessage="Posting anonymously"
-                          />
-                        )}
-                      </p>
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={collapseForm}
-                          className="px-2.5 py-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                          <FormattedMessage id="widget.home.form.cancel" defaultMessage="Cancel" />
-                        </button>
-                        <button
-                          type="submit"
-                          disabled={!canSubmitForm || isSubmitting}
-                          className="px-3 py-1 text-[11px] font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
-                        >
-                          {isSubmitting ? (
-                            <FormattedMessage
-                              id="widget.home.form.submitting"
-                              defaultMessage="Submitting..."
-                            />
-                          ) : (
-                            <FormattedMessage
-                              id="widget.home.form.submit"
-                              defaultMessage="Submit"
-                            />
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  </motion.div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
+              <Select
+                value={activeBoardSlug ?? 'all'}
+                onValueChange={(value) => {
+                  const slug = value === 'all' ? null : value
+                  setActiveBoardSlug(slug)
+                  onBoardChange?.(slug)
+                }}
+              >
+                <SelectTrigger
+                  size="xs"
+                  className="h-8 min-h-8 border-border/60 bg-card px-2 text-[11px]"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent align="start">
+                  <SelectItem value="all" className="text-xs py-1">
+                    <FormattedMessage id="widget.home.boards.all" defaultMessage="All categories" />
+                  </SelectItem>
+                  {boards.map((board) => (
+                    <SelectItem key={board.id} value={board.slug} className="text-xs py-1">
+                      {board.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
 
           {/* Popular ideas */}
           <div className="mt-2 min-h-0 flex-1 flex flex-col">
-            <div className="flex items-center justify-between px-1 h-10 shrink-0">
-              {popularSearchOpen ? (
-                <div
-                  className="flex items-center gap-1.5 rounded-md border border-primary/40 px-2 h-7"
-                  style={{ width: '315px', minWidth: 0 }}
-                >
-                  <MagnifyingGlassIcon className="w-3.5 h-3.5 text-primary/60 shrink-0" />
-                  <input
-                    ref={popularSearchInputRef}
-                    type="text"
-                    value={popularSearch}
-                    onChange={(e) => setPopularSearch(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') e.preventDefault()
-                    }}
-                    placeholder={intl.formatMessage({
-                      id: 'widget.home.popular.search.placeholder',
-                      defaultMessage: 'Search ideas...',
-                    })}
-                    className="flex-1 min-w-0 h-7 bg-transparent text-xs text-foreground placeholder:text-[12px] placeholder:text-muted-foreground/50 outline-none focus:caret-primary"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setPopularSearchOpen(false)}
-                    className="shrink-0 text-primary/50 hover:text-primary transition-colors"
-                  >
-                    <XMarkIcon className="w-4 h-4" />
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <div className="flex items-center gap-1 min-w-0 flex-1">
-                    <Select
-                      value={popularSort}
-                      onValueChange={(value) => {
-                        const sort = value as WidgetPopularSort
-                        setPopularSort(sort)
-                        onSortChange?.(sort)
-                      }}
-                    >
-                      <SelectTrigger
-                        size="xs"
-                        className="h-7 min-h-7 px-2 text-[11px] border-border/60 bg-transparent whitespace-nowrap"
-                      >
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent align="end">
-                        <SelectItem value="top" className="text-xs py-1">
-                          <FormattedMessage
-                            id="widget.home.popular.sort.top"
-                            defaultMessage="Most votes"
-                          />
-                        </SelectItem>
-                        <SelectItem value="least" className="text-xs py-1">
-                          <FormattedMessage
-                            id="widget.home.popular.sort.least"
-                            defaultMessage="Least votes"
-                          />
-                        </SelectItem>
-                        <SelectItem value="new" className="text-xs py-1">
-                          <FormattedMessage
-                            id="widget.home.popular.sort.new"
-                            defaultMessage="Newest"
-                          />
-                        </SelectItem>
-                        <SelectItem value="old" className="text-xs py-1">
-                          <FormattedMessage
-                            id="widget.home.popular.sort.old"
-                            defaultMessage="Oldest"
-                          />
-                        </SelectItem>
-                        <SelectItem value="trending" className="text-xs py-1">
-                          <FormattedMessage
-                            id="widget.home.popular.sort.trending"
-                            defaultMessage="Trending"
-                          />
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    {boards.length >= 2 && (
-                      <Select
-                        value={activeBoardSlug ?? 'all'}
-                        onValueChange={(value) => {
-                          const slug = value === 'all' ? null : value
-                          setActiveBoardSlug(slug)
-                          onBoardChange?.(slug)
-                        }}
-                      >
-                        <SelectTrigger
-                          size="xs"
-                          className="h-7 min-h-7 px-2 text-[11px] border-border/60 bg-transparent whitespace-nowrap"
-                        >
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent align="start">
-                          <SelectItem value="all" className="text-xs py-1">
-                            <FormattedMessage
-                              id="widget.home.boards.all"
-                              defaultMessage="All categories"
-                            />
-                          </SelectItem>
-                          {boards.map((board) => (
-                            <SelectItem key={board.id} value={board.slug} className="text-xs py-1">
-                              {board.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => setPopularSearchOpen(true)}
-                      className="flex items-center gap-1 text-primary transition-colors"
-                      aria-label={intl.formatMessage({
-                        id: 'widget.home.popular.search.aria',
-                        defaultMessage: 'Search ideas',
-                      })}
-                    >
-                      <MagnifyingGlassIcon className="w-4 h-4" />
-                      <span className="text-[13px]">Поиск</span>
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-
             <div className="min-h-0 flex-1 overflow-y-auto scrollbar-thin">
               {isPopularSearchActive && (
                 <>
@@ -1053,6 +742,216 @@ export function WidgetHome({
           </div>
         </div>
       </div>
-    </form>
+
+      <Dialog
+        open={isCreateModalOpen && isActive}
+        onOpenChange={(open) => {
+          if (!open) {
+            if (!isActive) return
+            closeCreateModal()
+            return
+          }
+          setIsCreateModalOpen(true)
+          setError(null)
+        }}
+      >
+        <DialogContent
+          className="!inset-0 !top-0 !left-0 !flex !h-screen !w-screen !max-h-none !max-w-none !translate-x-0 !translate-y-0 !flex-col gap-0 overflow-hidden rounded-none border-0 p-0 !shadow-none"
+          overlayClassName="!bg-transparent"
+          onPointerDownOutside={(event) => event.preventDefault()}
+        >
+          <DialogHeader className="border-b border-border/60 px-4 pt-4 pb-3">
+            <DialogTitle className="text-base">
+              <FormattedMessage id="widget.home.form.newRequest" defaultMessage="New request" />
+            </DialogTitle>
+            <p className="text-[11px] text-muted-foreground">
+              {user ? (
+                <FormattedMessage
+                  id="widget.home.posting.postingAs"
+                  defaultMessage="Posting as {name}"
+                  values={{
+                    name: (
+                      <span className="font-medium text-foreground">{user.name || user.email}</span>
+                    ),
+                  }}
+                />
+              ) : needsEmail ? (
+                email.trim() ? (
+                  <FormattedMessage
+                    id="widget.home.posting.postingAs"
+                    defaultMessage="Posting as {name}"
+                    values={{
+                      name: <span className="font-medium text-foreground">{email.trim()}</span>,
+                    }}
+                  />
+                ) : (
+                  <FormattedMessage
+                    id="widget.home.posting.emailRequired"
+                    defaultMessage="Your email is required"
+                  />
+                )
+              ) : (
+                <FormattedMessage
+                  id="widget.home.posting.postingAnonymously"
+                  defaultMessage="Posting anonymously"
+                />
+              )}
+            </p>
+          </DialogHeader>
+
+          <form onSubmit={handleSubmit} className="flex flex-1 min-h-0 flex-col overflow-hidden">
+            <div className="flex flex-1 min-h-0 flex-col gap-3 overflow-hidden px-4 pt-3 pb-2">
+              <div className="shrink-0 flex flex-col gap-2">
+                {boards.length > 1 && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-muted-foreground">
+                      <FormattedMessage
+                        id="widget.home.posting.postingTo"
+                        defaultMessage="Posting to"
+                      />
+                    </span>
+                    <Select value={selectedBoardId} onValueChange={setSelectedBoardId}>
+                      <SelectTrigger
+                        size="xs"
+                        className="h-8 min-h-8 border-border/60 bg-card px-2 text-[11px]"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent align="start">
+                        {boards.map((b) => (
+                          <SelectItem key={b.id} value={b.id} className="text-xs py-1">
+                            {b.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                <input
+                  type="text"
+                  autoFocus
+                  placeholder={intl.formatMessage({
+                    id: 'widget.home.input.placeholder',
+                    defaultMessage: "What's your idea?",
+                  })}
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="w-full rounded-md border border-border/60 bg-card px-3 py-2 text-base font-semibold text-foreground outline-none placeholder:font-normal placeholder:text-muted-foreground/50"
+                />
+              </div>
+
+              <div className="min-h-0 overflow-hidden rounded-md border border-border/60 bg-card">
+                <RichTextEditor
+                  value={contentJson || ''}
+                  onChange={handleEditorChange}
+                  placeholder={intl.formatMessage({
+                    id: 'widget.home.input.details',
+                    defaultMessage: 'Add more details...',
+                  })}
+                  minHeight="90px"
+                  maxHeight="100%"
+                  borderless
+                  toolbarPosition="top"
+                  toolbarVariant="media-history"
+                  defaultImageWidth={320}
+                  features={{
+                    images: canUploadImages,
+                    bubbleMenu: false,
+                    slashMenu: false,
+                  }}
+                  onImageUpload={canUploadImages ? uploadImage : undefined}
+                  className="h-full text-sm [&_.tiptap.ProseMirror]:px-3 [&_.tiptap.ProseMirror]:py-2"
+                />
+              </div>
+
+              {hasSimilarPosts && (
+                <div className="shrink-0 border-t border-border/60 pt-3">
+                  <p className="mb-1.5 flex items-center gap-1 text-[10px] font-medium text-muted-foreground/70">
+                    <LightBulbIcon className="h-3 w-3" />
+                    <FormattedMessage
+                      id="widget.home.similar.heading"
+                      defaultMessage="Similar ideas"
+                    />
+                  </p>
+                  <div className="space-y-0.5">
+                    {similarPosts.map((post) => (
+                      <WidgetPostRow
+                        key={post.id}
+                        post={post}
+                        statusMap={statusMap}
+                        compact
+                        canVote={canVote}
+                        ensureSessionThen={ensureSessionThen}
+                        onAuthRequired={() => handleAuthRequired(post.id)}
+                        onSelect={() => onPostSelect?.(post.id)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {error && (
+                <div className="shrink-0 rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                  {error}
+                </div>
+              )}
+            </div>
+
+            <div className="shrink-0 border-t border-border bg-muted/30 px-4 py-3">
+              {needsEmail && (
+                <div className="mb-2 flex gap-2">
+                  <input
+                    type="email"
+                    required
+                    placeholder={intl.formatMessage({
+                      id: 'widget.home.form.emailPlaceholder',
+                      defaultMessage: 'Your email',
+                    })}
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className={`flex-1 min-w-0 ${identityInputCls}`}
+                  />
+                  <input
+                    type="text"
+                    placeholder={intl.formatMessage({
+                      id: 'widget.home.form.namePlaceholder',
+                      defaultMessage: 'Name (optional)',
+                    })}
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className={`w-28 shrink-0 ${identityInputCls}`}
+                  />
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={closeCreateModal}
+                  className="rounded-md px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground"
+                >
+                  <FormattedMessage id="widget.home.form.cancel" defaultMessage="Cancel" />
+                </button>
+                <button
+                  type="submit"
+                  disabled={!canSubmitForm || isSubmitting}
+                  className="shrink-0 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {isSubmitting ? (
+                    <FormattedMessage
+                      id="widget.home.form.submitting"
+                      defaultMessage="Submitting..."
+                    />
+                  ) : (
+                    <FormattedMessage id="widget.home.form.submit" defaultMessage="Submit" />
+                  )}
+                </button>
+              </div>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
   )
 }

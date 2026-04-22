@@ -90,6 +90,8 @@
   "widget.commentForm.post": "Post",
   "widget.commentForm.postingAs": "Posting as {name}",
   "widget.commentForm.errorEmail": "Could not verify email. Please try again.",
+  "widget.commentForm.errorPost": "Could not post comment. Please try again.",
+  "widget.error.contentTooLong": "Text is too long. Maximum {max} characters.",
   "widget.help.searchPlaceholder": "Search help articles...",
   "widget.help.searching": "Searching...",
   "widget.help.noResults": "No results found",

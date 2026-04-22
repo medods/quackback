@@ -23,6 +23,7 @@ import {
   parseWidgetCommentMarkdown,
   serializeWidgetCommentMarkdown,
 } from './widget-comment-markdown'
+import { resolveWidgetErrorMessage } from './widget-error-message'
 
 const MAX_WIDGET_DEPTH = 2
 
@@ -218,13 +219,22 @@ function WidgetCommentItem({
       await onEditComment(comment.id, content)
       setShowEditForm(false)
     } catch (error) {
+      const fallbackMessage = intl.formatMessage({
+        id: 'widget.commentList.errorAction',
+        defaultMessage: 'Could not update comment. Please try again.',
+      })
       setActionError(
-        error instanceof Error
-          ? error.message
-          : intl.formatMessage({
-              id: 'widget.commentList.errorAction',
-              defaultMessage: 'Could not update comment. Please try again.',
-            })
+        resolveWidgetErrorMessage(error, {
+          fallbackMessage,
+          contentTooLongMessage: (maxLength) =>
+            intl.formatMessage(
+              {
+                id: 'widget.error.contentTooLong',
+                defaultMessage: 'Text is too long. Maximum {max} characters.',
+              },
+              { max: maxLength }
+            ),
+        })
       )
     } finally {
       setIsEditing(false)
@@ -239,13 +249,22 @@ function WidgetCommentItem({
     try {
       await onDeleteComment(comment.id)
     } catch (error) {
+      const fallbackMessage = intl.formatMessage({
+        id: 'widget.commentList.errorAction',
+        defaultMessage: 'Could not update comment. Please try again.',
+      })
       setActionError(
-        error instanceof Error
-          ? error.message
-          : intl.formatMessage({
-              id: 'widget.commentList.errorAction',
-              defaultMessage: 'Could not update comment. Please try again.',
-            })
+        resolveWidgetErrorMessage(error, {
+          fallbackMessage,
+          contentTooLongMessage: (maxLength) =>
+            intl.formatMessage(
+              {
+                id: 'widget.error.contentTooLong',
+                defaultMessage: 'Text is too long. Maximum {max} characters.',
+              },
+              { max: maxLength }
+            ),
+        })
       )
     } finally {
       setIsDeleting(false)

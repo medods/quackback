@@ -94,6 +94,14 @@ export function hexToOklch(hex: string): string {
 }
 
 export function oklchToHex(oklch: string): string {
+  if (isValidHex(oklch)) {
+    const normalized = oklch.startsWith('#') ? oklch : `#${oklch}`
+    if (normalized.length === 4) {
+      return `#${normalized[1]}${normalized[1]}${normalized[2]}${normalized[2]}${normalized[3]}${normalized[3]}`
+    }
+    return normalized.toLowerCase()
+  }
+
   const match = oklch.match(/oklch\(\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)/)
   if (!match) return '#000000'
 
